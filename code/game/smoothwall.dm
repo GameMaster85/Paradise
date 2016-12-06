@@ -28,7 +28,7 @@
 /turf/simulated/wall/isSmoothableNeighbor(var/atom/A)
 	if(is_type_in_list(A,canSmoothWith))
 		// COLON OPERATORS ARE TERRIBLE BUT I HAVE NO CHOICE
-		if(src.mineral == A:mineral)
+		if(src.mineral == A:mineral) //mineral not walltype so reinf still smooths with normal and vice versa
 			return 1
 	return 0
 
@@ -56,31 +56,30 @@
 	var/junction=findSmoothingNeighbors()
 	icon_state = "[walltype][junction]" // WHY ISN'T THIS IN UPDATE_ICON OR SIMILAR
 
-// AND NOW WE HAVE TO YELL AT THE NEIGHBORS FOR BEING LOUD AND NOT PAINTING WITH HOA-APPROVED COLORS
-/atom/proc/relativewall_neighbours(var/at=null)
-	if(!at)
-		at = get_turf(src)
+/atom/proc/relativewall_neighbours(var/sko=0) //SKO: Skip Optimizations
 	// OPTIMIZE BY NOT CHECKING FOR NEIGHBORS IF WE DON'T FUCKING SMOOTH
-	if(canSmoothWith.len>0)
+	if(canSmoothWith.len>0 || sko)
+		relativewall()
 		for(var/cdir in cardinal)
 			var/turf/T = get_step(src,cdir)
-			if(isSmoothableNeighbor(T))
+			if(isSmoothableNeighbor(T) || sko)
 				T.relativewall()
 			for(var/atom/A in T)
-				if(isSmoothableNeighbor(A))
+				if(isSmoothableNeighbor(A) || sko)
 					A.relativewall()
 
 /turf/simulated/wall/New()
-	relativewall_neighbours()
 	..()
+	relativewall_neighbours()
 
 /turf/simulated/wall/Destroy()
-
-	var/temploc = src.loc
+	for(var/obj/effect/E in src)
+		if(E.name == "Wallrot")
+			qdel(E)
 
 	if(!del_suppress_resmoothing)
 		spawn(10)
-			relativewall_neighbours(at=temploc)
+			relativewall_neighbours(sko=1)
 
 	// JESUS WHY
 	for(var/direction in cardinal)
@@ -90,23 +89,20 @@
 				shroom.icon_state = "glowshroomf"
 				shroom.pixel_x = 0
 				shroom.pixel_y = 0
-
-	..()
+/*		for(var/obj/effect/supermatter_crystal/crystal in get_step(src,direction))
+			if(!crystal.floor) //crystals drop to the floor
+				crystal.floor = 1
+				crystal.icon_state = "supermatter_crystalf"
+				crystal.pixel_x = 0
+				crystal.pixel_y = 0 */
+	return ..()
 
 // DE-HACK
 /turf/simulated/wall/vault/relativewall()
 	return
 
 
-//Xeno wall smoothing
 /obj/structure/alien/resin/relativewall()
-
-	var/junction = 0 //will be used to determine from which side the wall is connected to other walls
-
-	for(var/obj/structure/alien/resin/W in orange(src,1))
-		if(abs(src.x-W.x)-abs(src.y-W.y)) //doesn't count diagonal walls
-			junction |= get_dir(src,W)
-	var/obj/structure/alien/resin/resin = src
-	resin.icon_state = "[resin.resintype][junction]"
-
+	var/junction = findSmoothingNeighbors()
+	icon_state = "[resintype][junction]"
 	return

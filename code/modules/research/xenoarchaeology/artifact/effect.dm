@@ -64,7 +64,7 @@
 			var/atom/toplevelholder = holder
 			while(!istype(toplevelholder.loc, /turf))
 				toplevelholder = toplevelholder.loc
-			toplevelholder.visible_message("\red \icon[toplevelholder] [toplevelholder] [display_msg]")
+			toplevelholder.visible_message("\red [bicon(toplevelholder)] [toplevelholder] [display_msg]")
 
 /datum/artifact_effect/proc/DoEffectTouch(var/mob/user)
 /datum/artifact_effect/proc/DoEffectAura(var/atom/holder)
@@ -92,16 +92,16 @@ proc/GetAnomalySusceptibility(var/mob/living/carbon/human/H)
 	//anomaly suits give best protection, but excavation suits are almost as good
 	if(istype(H.wear_suit,/obj/item/clothing/suit/bio_suit/anomaly))
 		protected += 0.6
-	else if(istype(H.wear_suit,/obj/item/clothing/suit/space/anomaly))
+	else if(istype(H.wear_suit,/obj/item/clothing/suit/space/eva/anomaly))
 		protected += 0.5
 
 	if(istype(H.head,/obj/item/clothing/head/bio_hood/anomaly))
 		protected += 0.3
-	else if(istype(H.head,/obj/item/clothing/head/helmet/space/anomaly))
+	else if(istype(H.head,/obj/item/clothing/head/helmet/space/eva/anomaly))
 		protected += 0.2
 
 	//latex gloves and science goggles also give a bit of bonus protection
-	if(istype(H.gloves,/obj/item/clothing/gloves/latex))
+	if(istype(H.gloves,/obj/item/clothing/gloves/color/latex))
 		protected += 0.1
 
 	if(istype(H.glasses,/obj/item/clothing/glasses/science))

@@ -34,13 +34,13 @@
 	* mob/RangedAttack(atom,params) - used only ranged, only used for tk and laser eyes but could be changed
 */
 /mob/proc/ClickOn( var/atom/A, var/params )
+	if(client.click_intercept)
+		client.click_intercept.InterceptClickOn(src, params, A)
+		return
+
 	if(world.time <= next_click)
 		return
 	next_click = world.time + 1
-
-	if(client.buildmode)
-		build_click(src, client.buildmode, params, A)
-		return
 
 	var/list/modifiers = params2list(params)
 	if(modifiers["shift"] && modifiers["ctrl"])
@@ -62,10 +62,10 @@
 		CtrlClickOn(A)
 		return
 
-	if(stat || paralysis || stunned || weakened)
+	if(incapacitated(ignore_restraints = 1, ignore_grab = 1, ignore_lying = 1))
 		return
 
-	face_atom(A) // change direction to face what you clicked on
+	face_atom(A)
 
 	if(next_move > world.time) // in the year 2000...
 		return
@@ -74,9 +74,10 @@
 		if(!locate(/turf) in list(A,A.loc)) // Prevents inventory from being drilled
 			return
 		var/obj/mecha/M = loc
-		return M.click_action(A,src)
+		return M.click_action(A, src, params)
 
 	if(restrained())
+		changeNext_move(CLICK_CD_HANDCUFFED) //Doing shit in cuffs shall be vey slow
 		RestrainedClickOn(A)
 		return
 
@@ -87,56 +88,45 @@
 	var/obj/item/W = get_active_hand()
 
 	if(W == A)
-		next_move = world.time + 6
-		if(W.flags&USEDELAY)
-			next_move += 5
 		W.attack_self(src)
 		if(hand)
 			update_inv_l_hand(0)
 		else
 			update_inv_r_hand(0)
-
 		return
 
-	// operate two levels deep here (item in backpack in src; NOT item in box in backpack in src)
-	if(A == loc || (A in loc) || (A in contents) || (A.loc in contents))
-
-		// faster access to objects already on you
-		if(A in contents)
-			next_move = world.time + 6 // on your person
-		else
-			next_move = world.time + 8 // in a box/bag or in your square
-
+	// operate two STORAGE levels deep here (item in backpack in src; NOT item in box in backpack in src)
+	var/sdepth = A.storage_depth(src)
+	if(A == loc || (A in loc) || (sdepth != -1 && sdepth <= 1))
 		// No adjacency needed
 		if(W)
-			if(W.flags&USEDELAY)
-				next_move += 5
-
 			var/resolved = A.attackby(W,src)
 			if(!resolved && A && W)
 				W.afterattack(A,src,1,params) // 1 indicates adjacency
 		else
-			UnarmedAttack(A)
+			if(ismob(A))
+				changeNext_move(CLICK_CD_MELEE)
+			UnarmedAttack(A, 1)
+
 		return
 
 	if(!isturf(loc)) // This is going to stop you from telekinesing from inside a closet, but I don't shed many tears for that
 		return
 
 	// Allows you to click on a box's contents, if that box is on the ground, but no deeper than that
-	if(isturf(A) || isturf(A.loc) || (A.loc && isturf(A.loc.loc)))
-		next_move = world.time + 10
-
+	sdepth = A.storage_depth_turf()
+	if(isturf(A) || isturf(A.loc) || (sdepth != -1 && sdepth <= 1))
 		if(A.Adjacent(src)) // see adjacent.dm
 			if(W)
-				if(W.flags&USEDELAY)
-					next_move += 5
-
-				// Return 1 in attackby() to prevent afterattack() effects (when safely moving items for example)
-				var/resolved = A.attackby(W,src)
+				// Return 1 in attackby() to prevent afterattack() effects (when safely moving items for example, params)
+				var/resolved = A.attackby(W,src,params)
 				if(!resolved && A && W)
 					W.afterattack(A,src,1,params) // 1: clicking something Adjacent
 			else
+				if(ismob(A))
+					changeNext_move(CLICK_CD_MELEE)
 				UnarmedAttack(A, 1)
+
 			return
 		else // non-adjacent click
 			if(W)
@@ -146,10 +136,12 @@
 
 	return
 
+/mob/proc/changeNext_move(num)
+	next_move = world.time + num
+
 // Default behavior: ignore double clicks, consider them normal clicks instead
 /mob/proc/DblClickOn(var/atom/A, var/params)
-	ClickOn(A,params)
-
+	return
 
 /*
 	Translates into attack_hand, etc.
@@ -162,6 +154,8 @@
 	in human click code to allow glove touches only at melee range.
 */
 /mob/proc/UnarmedAttack(var/atom/A, var/proximity_flag)
+	if(ismob(A))
+		changeNext_move(CLICK_CD_MELEE)
 	return
 
 /*
@@ -173,25 +167,14 @@
 	animals lunging, etc.
 */
 /mob/proc/RangedAttack(var/atom/A, var/params)
-	if(ishuman(src) && (istype(src:gloves, /obj/item/clothing/gloves/yellow/power)) && a_intent == "harm")
-		PowerGlove(A)
-	if(!mutations.len) return
-	if((M_LASER in mutations) && a_intent == "harm")
+	if(!mutations.len)
+		return
+	if((LASER in mutations) && a_intent == I_HARM)
 		LaserEyes(A) // moved into a proc below
 		return
-	else if(M_TK in mutations)
-		switch(get_dist(src,A))
-			if(0)
-				;
-			if(1 to 5) // not adjacent may mean blocked by window
-				next_move += 2
-			if(5 to 7)
-				next_move += 5
-			if(8 to tk_maxrange)
-				next_move += 10
-			else
-				return
-		A.attack_tk(src)
+	else
+		if(TK in mutations)
+			A.attack_tk(src)
 /*
 	Restrained ClickOn
 
@@ -206,8 +189,22 @@
 	Only used for swapping hands
 */
 /mob/proc/MiddleClickOn(var/atom/A)
-	A.point()
+	pointed(A)
 	return
+
+// See click_override.dm
+/mob/living/MiddleClickOn(var/atom/A)
+ if(src.middleClickOverride)
+ 	middleClickOverride.onClick(A, src)
+ else
+ 	..()
+
+/mob/living/carbon/MiddleClickOn(var/atom/A)
+	if(!src.stat && src.mind && src.mind.changeling && src.mind.changeling.chosen_sting && (istype(A, /mob/living/carbon)) && (A != src))
+		next_click = world.time + 5
+		mind.changeling.chosen_sting.try_to_sting(src, A)
+	else
+		..()
 
 // In case of use break glass
 /*
@@ -224,9 +221,8 @@
 	A.ShiftClick(src)
 	return
 /atom/proc/ShiftClick(var/mob/user)
-	if(user.client && user.client.eye == user)
-		examine()
-		user.face_atom(src)
+	if(user.client && get_turf(user.client.eye) == get_turf(user))
+		user.examinate(src)
 	return
 
 /*
@@ -251,14 +247,29 @@
 	A.AltClick(src)
 	return
 
+// See click_override.dm
+/mob/living/AltClickOn(var/atom/A)
+ if(src.middleClickOverride)
+ 	middleClickOverride.onClick(A, src)
+ else
+ 	..()
+
+/mob/living/carbon/AltClickOn(var/atom/A)
+	if(!src.stat && src.mind && src.mind.changeling && src.mind.changeling.chosen_sting && (istype(A, /mob/living/carbon)) && (A != src))
+		next_click = world.time + 5
+		mind.changeling.chosen_sting.try_to_sting(src, A)
+	else
+		..()
+
 /atom/proc/AltClick(var/mob/user)
 	var/turf/T = get_turf(src)
-	if(T && user.TurfAdjacent(T))
-		if(user.listed_turf == T)
-			user.listed_turf = null
-		else
+	if(T)
+		if(user.TurfAdjacent(T))
 			user.listed_turf = T
 			user.client.statpanel = T.name
+			// If we had a method to force a `Stat` update, it would go here
+		else
+			user.listed_turf = null
 	return
 
 /mob/proc/TurfAdjacent(var/turf/T)
@@ -273,16 +284,16 @@
 	return
 
 /atom/proc/CtrlShiftClick(var/mob/user)
-	return	
+	return
 
 /mob/proc/AltShiftClickOn(var/atom/A)
 	A.AltShiftClick(src)
 	return
 
 /atom/proc/AltShiftClick(var/mob/user)
-	return	
-	
-	
+	return
+
+
 /*
 	Misc helpers
 
@@ -293,7 +304,7 @@
 	return
 
 /mob/living/LaserEyes(atom/A)
-	next_move = world.time + 6
+	changeNext_move(CLICK_CD_RANGE)
 	var/turf/T = get_turf(src)
 	var/turf/U = get_turf(A)
 
@@ -308,94 +319,21 @@
 	LE.current = T
 	LE.yo = U.y - T.y
 	LE.xo = U.x - T.x
-	spawn( 1 )
-		LE.process()
+	LE.fire()
 
-/mob/living/carbon/human/LaserEyes()
-	if(nutrition>0)
-		..()
-		nutrition = max(nutrition - rand(1,5),0)
-		handle_regular_hud_updates()
-	else
-		src << "\red You're out of energy!  You need food!"
-
-/mob/proc/PowerGlove(atom/A)
-	return
-
-/mob/living/carbon/human/PowerGlove(atom/A)
-	var/obj/item/clothing/gloves/yellow/power/G = src:gloves
-	var/time = 100
-	var/turf/T = get_turf(src)
-	var/turf/U = get_turf(A)
-	var/obj/structure/cable/cable = locate() in T
-	if(!cable || !istype(cable))
-		src << "<span class='warning'>There is no cable here to power the gloves.</span>"
-		return
-	if(world.time < G.next_shock)
-		src << "<span class='warning'>[G] aren't ready to shock again!</span>"
-		return
-	src.visible_message("<span class='warning'>[name] fires an arc of electricity!</span>", \
-	"<span class='warning'>You fire an arc of electricity!</span>", \
-	"You hear the loud crackle of electricity!")
-	var/datum/powernet/PN = cable.get_powernet()
-	var/available = 0
-	var/obj/item/projectile/beam/lightning/L = new /obj/item/projectile/beam/lightning/(get_turf(src))
-	if(PN)
-		available = PN.avail
-		L.damage = PN.get_electrocute_damage()
-		if(available >= 5000000)
-			L.damage = 205
-		if(L.damage >= 200)
-			apply_damage(15, BURN, (hand ? "l_hand" : "r_hand"))
-			//usr:Stun(15)
-			//usr:Weaken(15)
-			//if(usr:status_flags & CANSTUN) // stun is usually associated with stutter
-			//	usr:stuttering += 20
-			time = 200
-			src << "<span class='warning'>[G] overload from the massive current shocking you in the process!"
-		else if(L.damage >= 100)
-			apply_damage(5, BURN, (hand ? "l_hand" : "r_hand"))
-			//usr:Stun(10)
-			//usr:Weaken(10)
-			//if(usr:status_flags & CANSTUN) // stun is usually associated with stutter
-			//	usr:stuttering += 10
-			time = 150
-			src << "<span class='warning'>[G] overload from the massive current shocking you in the process!"
-		var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
-		s.set_up(5, 1, src)
-		s.start()
-	if(L.damage <= 0)
-		del(L)
-	if(L)
-		playsound(get_turf(src), 'sound/effects/eleczap.ogg', 75, 1)
-		L.tang = L.adjustAngle(get_angle(U,T))
-		L.icon = midicon
-		L.icon_state = "[L.tang]"
-		L.firer = usr
-		L.def_zone = get_organ_target()
-		L.original = src
-		L.current = U
-		L.starting = U
-		L.yo = U.y - T.y
-		L.xo = U.x - T.x
-		spawn( 1 )
-			L.process()
-
-	next_move = world.time + 12
-	G.next_shock = world.time + time
 // Simple helper to face what you clicked on, in case it should be needed in more than one place
 /mob/proc/face_atom(var/atom/A)
 
-	// Snowflake for space vines.
+/*	// Snowflake for space vines. //Are you fucking kidding me?
 	var/is_buckled = 0
 	if(buckled)
 		if(istype(buckled))
 			if(!buckled.movable)
 				is_buckled = 1
 		else
-			is_buckled = 0
+			is_buckled = 0*/
 
-	if( stat || is_buckled || !A || !x || !y || !A.x || !A.y ) return
+	if( stat || buckled || !A || !x || !y || !A.x || !A.y ) return
 	var/dx = A.x - x
 	var/dy = A.y - y
 	if(!dx && !dy) return
@@ -408,6 +346,24 @@
 		if(dx > 0)	direction = EAST
 		else		direction = WEST
 	usr.dir = direction
-	if(buckled && buckled.movable)
+
+/*	if(buckled && buckled.movable)
 		buckled.dir = direction
-		buckled.handle_rotation()
+		buckled.handle_rotation()*/
+
+/obj/screen/click_catcher
+	icon = 'icons/mob/screen_full.dmi'
+	icon_state = "passage0"
+	plane = CLICKCATCHER_PLANE
+	mouse_opacity = 2
+	screen_loc = "CENTER-7,CENTER-7"
+
+/obj/screen/click_catcher/Click(location, control, params)
+	var/list/modifiers = params2list(params)
+	if(modifiers["middle"] && istype(usr, /mob/living/carbon))
+		var/mob/living/carbon/C = usr
+		C.swap_hand()
+	else
+		var/turf/T = screen_loc2turf(modifiers["screen-loc"], get_turf(usr))
+		T.Click(location, control, params)
+	return 1

@@ -7,35 +7,20 @@
 	sharp = 1
 	edge = 1
 	desc = "Could probably be used as ... a throwing weapon?"
-	w_class = 2.0
+	w_class = 1
 	force = 5.0
-	throwforce = 8.0
+	throwforce = 10.0
 	item_state = "shard-glass"
-//	matter = list("glass" = 3750)
+	materials = list(MAT_GLASS=MINERAL_MATERIAL_AMOUNT)
 	attack_verb = list("stabbed", "slashed", "sliced", "cut")
+	hitsound = 'sound/weapons/bladeslice.ogg'
 
 /obj/item/weapon/shard/suicide_act(mob/user)
-		viewers(user) << pick("\red <b>[user] is slitting \his wrists with \the [src]! It looks like \he's trying to commit suicide.</b>", \
-							"\red <b>[user] is slitting \his throat with \the [src]! It looks like \he's trying to commit suicide.</b>")
+		to_chat(viewers(user), pick("<span class='danger'>[user] is slitting \his wrists with \the [src]! It looks like \he's trying to commit suicide.</span>",
+									"<span class='danger'>[user] is slitting \his throat with \the [src]! It looks like \he's trying to commit suicide.</span>"))
 		return (BRUTELOSS)
 
-/obj/item/weapon/shard/attack(mob/living/carbon/M as mob, mob/living/carbon/user as mob)
-	playsound(loc, 'sound/weapons/bladeslice.ogg', 50, 1, -1)
-	return ..()
-
-/obj/item/weapon/shard/Bump()
-
-	spawn( 0 )
-		if (prob(20))
-			src.force = 15
-		else
-			src.force = 4
-		..()
-		return
-	return
-
 /obj/item/weapon/shard/New()
-
 	src.icon_state = pick("large", "medium", "small")
 	switch(src.icon_state)
 		if("small")
@@ -48,39 +33,37 @@
 			src.pixel_x = rand(-5, 5)
 			src.pixel_y = rand(-5, 5)
 		else
-	return
-
-/obj/item/weapon/shard/attackby(obj/item/weapon/W as obj, mob/user as mob)
 	..()
-	if ( istype(W, /obj/item/weapon/weldingtool))
-		var/obj/item/weapon/weldingtool/WT = W
+
+/obj/item/weapon/shard/attackby(obj/item/I, mob/user, params)
+	if(istype(I, /obj/item/weapon/weldingtool))
+		var/obj/item/weapon/weldingtool/WT = I
 		if(WT.remove_fuel(0, user))
 			var/obj/item/stack/sheet/glass/NG = new (user.loc)
-			for (var/obj/item/stack/sheet/glass/G in user.loc)
-				if(G==NG)
+			for(var/obj/item/stack/sheet/glass/G in user.loc)
+				if(G == NG)
 					continue
-				if(G.amount>=G.max_amount)
+				if(G.amount >= G.max_amount)
 					continue
 				G.attackby(NG, user)
-				usr << "You add the newly-formed glass to the stack. It now contains [NG.amount] sheets."
-			//SN src = null
-			del(src)
-			return
-	return ..()
+			to_chat(user, "<span class='notice'>You add the newly-formed glass to the stack. It now contains [NG.amount] sheet\s.</span>")
+			qdel(src)
+	..()
 
 /obj/item/weapon/shard/Crossed(AM as mob|obj)
-	if(ismob(AM))
-		var/mob/M = AM
-		M << "\red <B>You step on \the [src]!</B>"
+	if(isliving(AM))
+		var/mob/living/M = AM
+		if(M.incorporeal_move || M.flying)//you are incorporal or flying..no shard stepping!
+			return
+		to_chat(M, "<span class='danger'>You step on \the [src]!</span>")
 		playsound(src.loc, 'sound/effects/glass_step.ogg', 50, 1) // not sure how to handle metal shards with sounds
 		if(ishuman(M))
 			var/mob/living/carbon/human/H = M
 
-			if(H.species.flags & IS_SYNTHETIC)
-				return
-
 			if( !H.shoes && ( !H.wear_suit || !(H.wear_suit.body_parts_covered & FEET) ) )
-				var/datum/organ/external/affecting = H.get_organ(pick("l_foot", "r_foot"))
+				var/obj/item/organ/external/affecting = H.get_organ(pick("l_foot", "r_foot"))
+				if(!affecting)
+					return
 				if(affecting.status & ORGAN_ROBOT)
 					return
 				H.Weaken(3)

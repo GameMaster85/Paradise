@@ -3,43 +3,24 @@
 // An invisible (no icon) mob that the AI controls to look around the station with.
 // It streams chunks as it moves around, which will show it what the AI can and cannot see.
 
-/mob/aiEye
+/mob/camera/aiEye
 	name = "Inactive AI Eye"
-	icon = 'icons/obj/status_display.dmi' // For AI friend secret shh :o
+
+	icon = 'icons/mob/AI.dmi' //Allows ghosts to see what the AI is looking at.
+	icon_state = "eye"
+	alpha = 127
+	invisibility = SEE_INVISIBLE_OBSERVER
+
+	var/list/visibleCameraChunks = list()
 	var/mob/living/silicon/ai/ai = null
-	density = 0
-	status_flags = GODMODE  // You can't damage it.
-	mouse_opacity = 0
-	see_in_dark = 7
+	var/relay_speech = FALSE
 
-/mob/aiEye/New()
-	..()
-	visibility_interface = new /datum/visibility_interface/ai_eye(src)
-
-// Movement code. Returns 0 to stop air movement from moving it.
-/mob/aiEye/Move()
-	return 0
-
-// Hide popout menu verbs
-/mob/aiEye/examine()
-	set popup_menu = 0
-	set src = usr.contents
-	return 0
-
-/mob/aiEye/pull()
-	set popup_menu = 0
-	set src = usr.contents
-	return 0
-
-/mob/aiEye/point()
-	set popup_menu = 0
-	set src = usr.contents
-	return 0
 
 // Use this when setting the aiEye's location.
 // It will also stream the chunk that the new loc is in.
 
-/mob/aiEye/setLoc(var/T)
+/mob/camera/aiEye/setLoc(T)
+
 	if(ai)
 		if(!isturf(ai.loc))
 			return
@@ -52,42 +33,27 @@
 		if(ai.holo)
 			ai.holo.move_hologram()
 
-
-/mob/aiEye/Move()
+/mob/camera/aiEye/Move()
 	return 0
 
-// AI MOVEMENT
+/mob/camera/aiEye/proc/GetViewerClient()
+	if(ai)
+		return ai.client
+	return null
 
-// The AI's "eye". Described on the top of the page.
-
-/mob/living/silicon/ai
-	var/mob/aiEye/eyeobj = new()
-	var/sprint = 10
-	var/cooldown = 0
-	var/acceleration = 1
-	var/obj/machinery/hologram/holopad/holo = null
-
-
-// Intiliaze the eye by assigning it's "ai" variable to us. Then set it's loc to us.
-/mob/living/silicon/ai/New()
-	..()
-	eyeobj.ai = src
-	eyeobj.name = "[src.name] (AI Eye)" // Give it a name
-	spawn(5)
-		eyeobj.loc = src.loc
-
-/mob/living/silicon/ai/Destroy()
-	eyeobj.ai = null
-	del(eyeobj) // No AI, no Eye
-	..()
+/mob/camera/aiEye/Destroy()
+	ai = null
+	return ..()
 
 /atom/proc/move_camera_by_click()
 	if(istype(usr, /mob/living/silicon/ai))
 		var/mob/living/silicon/ai/AI = usr
 		if(AI.eyeobj && AI.client.eye == AI.eyeobj)
 			AI.cameraFollow = null
-			if (isturf(src.loc) || isturf(src))
+			if(isturf(src.loc) || isturf(src))
 				AI.eyeobj.setLoc(src)
+
+// AI MOVEMENT
 
 // This will move the AIEye. It will also cause lights near the eye to light up, if toggled.
 // This is handled in the proc below this one.
@@ -111,13 +77,21 @@
 	else
 		user.sprint = initial
 
-	user.cameraFollow = null
+	if(!user.tracking)
+		user.cameraFollow = null
 
 	//user.unset_machine() //Uncomment this if it causes problems.
 	//user.lightNearbyCamera()
-
+	if(user.camera_light_on)
+		user.light_cameras()
 
 // Return to the Core.
+/mob/living/silicon/ai/proc/core()
+	set category = "AI Commands"
+	set name = "AI Core"
+
+	view_core()
+
 /mob/living/silicon/ai/proc/view_core()
 
 	current = null
@@ -125,23 +99,24 @@
 	unset_machine()
 
 	if(src.eyeobj && src.loc)
-		src.eyeobj.z = src.z
 		src.eyeobj.loc = src.loc
 	else
-		src << "ERROR: Eyeobj not found. Creating new eye..."
+		to_chat(src, "ERROR: Eyeobj not found. Creating new eye...")
 		src.eyeobj = new(src.loc)
 		src.eyeobj.ai = src
 		src.eyeobj.name = "[src.name] (AI Eye)" // Give it a name
 
-	if(client && client.eye)
-		client.eye = src
+	eyeobj.setLoc(loc)
 
-	for(var/datum/visibility_chunk/camera/c in eyeobj.visibility_interface.visible_chunks)
-		c.remove(eyeobj)
-
-/mob/living/silicon/ai/verb/toggle_acceleration()
+/mob/living/silicon/ai/proc/toggle_acceleration()
 	set category = "AI Commands"
 	set name = "Toggle Camera Acceleration"
 
+	if(usr.stat == 2)
+		return //won't work if dead
 	acceleration = !acceleration
-	usr << "Camera acceleration has been toggled [acceleration ? "on" : "off"]."
+	to_chat(usr, "Camera acceleration has been toggled [acceleration ? "on" : "off"].")
+
+/mob/camera/aiEye/hear_say(var/message, var/verb = "says", var/datum/language/language = null, var/alt_name = "", var/italics = 0, var/mob/speaker = null, var/sound/speech_sound, var/sound_vol)
+	if(relay_speech)
+		ai.relay_speech(speaker, message, verb, language)

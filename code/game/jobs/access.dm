@@ -10,7 +10,7 @@
 /var/const/access_tox_storage = 8
 /var/const/access_genetics = 9
 /var/const/access_engine = 10
-/var/const/access_engine_equip= 11
+/var/const/access_engine_equip = 11
 /var/const/access_maint_tunnels = 12
 /var/const/access_external_airlocks = 13
 /var/const/access_emergency_storage = 14
@@ -67,44 +67,40 @@
 /var/const/access_xenoarch = 65
 /var/const/access_paramedic = 66
 /var/const/access_blueshield = 67
-/var/const/access_customs = 68
 /var/const/access_salvage_captain = 69 // Salvage ship captain's quarters
 /var/const/access_mechanic = 70
 /var/const/access_pilot = 71
-/var/const/access_ntrec = 72
 /var/const/access_ntrep = 73
 /var/const/access_magistrate = 74
 /var/const/access_minisat = 75
+/var/const/access_mineral_storeroom = 76
 
 /var/const/access_weapons = 99 //Weapon authorization for secbots
 
 	//BEGIN CENTCOM ACCESS
-	/*Should leave plenty of room if we need to add more access levels.
-/var/const/Mostly for admin fun times.*/
 /var/const/access_cent_general = 101//General facilities.
-/var/const/access_cent_thunder = 102//Thunderdome.
-/var/const/access_cent_specops = 103//Special Ops.
-/var/const/access_cent_medical = 104//Medical/Research
-/var/const/access_cent_living = 105//Living quarters.
-/var/const/access_cent_storage = 106//Generic storage areas.
-/var/const/access_cent_teleporter = 107//Teleporter.
-/var/const/access_cent_creed = 108//Creed's office.
-/var/const/access_cent_captain = 109//Captain's office/ID comp/AI.
-
-	//EMBASSIES
-
-/var/const/embassy_tajaran = 120
-/var/const/embassy_skrell = 121
-/var/const/embassy_unathi = 122
-/var/const/embassy_diona = 123
-/var/const/embassy_kidan = 124
-/var/const/embassy_slime = 125
-/var/const/embassy_grey = 126
-/var/const/embassy_vox = 127
+/var/const/access_cent_living = 102//Living quarters.
+/var/const/access_cent_medical = 103//Medical.
+/var/const/access_cent_security = 104//Security.
+/var/const/access_cent_storage = 105//Storage areas.
+/var/const/access_cent_shuttles = 106//Shuttle docks.
+/var/const/access_cent_telecomms = 107//Telecomms.
+/var/const/access_cent_teleporter = 108//Telecomms.
+/var/const/access_cent_specops = 109//Special Ops.
+/var/const/access_cent_specops_commander = 110//Special Ops Commander.
+/var/const/access_cent_blackops = 111//Black Ops.
+/var/const/access_cent_thunder = 112//Thunderdome.
+/var/const/access_cent_bridge = 113//Bridge.
+/var/const/access_cent_commander = 114//Commander's Office/ID computer.
 
 	//The Syndicate
 /var/const/access_syndicate = 150//General Syndicate Access
 /var/const/access_syndicate_leader = 151//Nuke Op Leader Access
+/var/const/access_vox = 152//Vox Access
+
+//Trade Stations
+
+var/const/access_trade_sol = 160
 
 	//MONEY
 /var/const/access_crate_cash = 200
@@ -116,22 +112,21 @@
 
 //returns 1 if this mob has sufficient access to use this object
 /obj/proc/allowed(mob/M)
-	//check if it doesn't require any access at all
-	if(src.check_access(null))
+	//check if we don't require any access at all
+	if(check_access())
 		return 1
-	if(istype(M, /mob/living/silicon))
-		//AI can do whatever he wants
-		return 1
-	else if(istype(M, /mob/living/carbon/human))
-		var/mob/living/carbon/human/H = M
-		//if they are holding or wearing a card that has access, that works
-		if(src.check_access(H.get_active_hand()) || src.check_access(H.wear_id))
-			return 1
-	else if(istype(M, /mob/living/carbon/monkey) || istype(M, /mob/living/carbon/alien/humanoid))
-		var/mob/living/carbon/george = M
-		//they can only hold things :(
-		if(src.check_access(george.get_active_hand()))
-			return 1
+
+	if(!M)
+		return 0
+
+	var/acc = M.get_access() //see mob.dm
+
+	if(acc == IGNORE_ACCESS)
+		return 1 //Mob ignores access
+
+	else
+		return check_access_list(acc)
+
 	return 0
 
 /obj/item/proc/GetAccess()
@@ -140,57 +135,50 @@
 /obj/item/proc/GetID()
 	return null
 
-/obj/proc/check_access(obj/item/I)
+/obj/proc/generate_req_lists()
 	//These generations have been moved out of /obj/New() because they were slowing down the creation of objects that never even used the access system.
-	if(!src.req_access)
-		src.req_access = list()
-		if(src.req_access_txt)
-			var/list/req_access_str = text2list(req_access_txt,";")
+	if(!req_access)
+		req_access = list()
+		if(req_access_txt)
+			var/list/req_access_str = splittext(req_access_txt, ";")
 			for(var/x in req_access_str)
 				var/n = text2num(x)
 				if(n)
 					req_access += n
 
-	if(!src.req_one_access)
-		src.req_one_access = list()
-		if(src.req_one_access_txt)
-			var/list/req_one_access_str = text2list(req_one_access_txt,";")
+	if(!req_one_access)
+		req_one_access = list()
+		if(req_one_access_txt)
+			var/list/req_one_access_str = splittext(req_one_access_txt,";")
 			for(var/x in req_one_access_str)
 				var/n = text2num(x)
 				if(n)
 					req_one_access += n
 
-	if(!istype(src.req_access, /list)) //something's very wrong
-		return 1
-
-	var/list/L = src.req_access
-	if(!L.len && (!src.req_one_access || !src.req_one_access.len)) //no requirements
-		return 1
-	if(!I)
-		return 0
-	for(var/req in src.req_access)
-		if(!(req in I.GetAccess())) //doesn't have this access
-			return 0
-	if(src.req_one_access && src.req_one_access.len)
-		for(var/req in src.req_one_access)
-			if(req in I.GetAccess()) //has an access from the single access list
-				return 1
-		return 0
-	return 1
-
+/obj/proc/check_access(obj/item/I)
+	var/list/L
+	if(I)
+		L = I.GetAccess()
+	else
+		L = list()
+	return check_access_list(L)
 
 /obj/proc/check_access_list(var/list/L)
-	if(!src.req_access  && !src.req_one_access)	return 1
-	if(!istype(src.req_access, /list))	return 1
-	if(!src.req_access.len && (!src.req_one_access || !src.req_one_access.len))	return 1
-	if(!L)	return 0
-	if(!istype(L, /list))	return 0
-	for(var/req in src.req_access)
-		if(!(req in L)) //doesn't have this access
+	generate_req_lists()
+
+	if(!L)
+		return 0
+	if(!istype(L, /list))
+		return 0
+	return has_access(req_access, req_one_access, L)
+
+/proc/has_access(var/list/req_access, var/list/req_one_access, var/list/accesses)
+	for(var/req in req_access)
+		if(!(req in accesses)) //doesn't have this access
 			return 0
-	if(src.req_one_access && src.req_one_access.len)
-		for(var/req in src.req_one_access)
-			if(req in L) //has an access from the single access list
+	if(req_one_access.len)
+		for(var/req in req_one_access)
+			if(req in accesses) //has an access from the single access list
 				return 1
 		return 0
 	return 1
@@ -198,26 +186,28 @@
 /proc/get_centcom_access(job)
 	switch(job)
 		if("VIP Guest")
-			return list(access_cent_general)
+			return list(access_cent_general, access_cent_living)
 		if("Custodian")
-			return list(access_cent_general, access_cent_living, access_cent_storage)
+			return list(access_cent_general, access_cent_living, access_cent_medical, access_cent_storage)
 		if("Thunderdome Overseer")
 			return list(access_cent_general, access_cent_thunder)
-		if("Emergency Response Team")
-			return list(access_cent_general, access_cent_living, access_cent_storage) + get_all_accesses()
+		if("Emergency Response Team Member")
+			return list(access_cent_general, access_cent_living, access_cent_medical, access_cent_security, access_cent_storage, access_cent_specops) + get_all_accesses()
 		if("Emergency Response Team Leader")
-			return list(access_cent_general, access_cent_living, access_cent_storage, access_cent_teleporter) + get_all_accesses()
-		if("Intel Officer")
-			return list(access_cent_general, access_cent_living) + get_all_accesses()
+			return list(access_cent_general, access_cent_living, access_cent_medical, access_cent_security, access_cent_storage, access_cent_specops, access_cent_specops_commander) + get_all_accesses()
 		if("Medical Officer")
-			return list(access_cent_general, access_cent_living, access_cent_medical) + get_all_accesses()
-		if("Death Commando")
-			return list(access_cent_general, access_cent_specops, access_cent_living, access_cent_storage) + get_all_accesses()
+			return list(access_cent_general, access_cent_living, access_cent_medical, access_cent_storage) + get_all_accesses()
+		if("Intel Officer")
+			return list(access_cent_general, access_cent_living, access_cent_security, access_cent_storage) + get_all_accesses()
 		if("Research Officer")
-			return list(access_cent_general, access_cent_specops, access_cent_medical, access_cent_teleporter, access_cent_storage) + get_all_accesses()
-		if("BlackOps Commander")
-			return list(access_cent_general, access_cent_thunder, access_cent_specops, access_cent_living, access_cent_storage, access_cent_creed) + get_all_accesses()
+			return list(access_cent_general, access_cent_specops, access_cent_medical, access_cent_storage, access_cent_telecomms, access_cent_teleporter) + get_all_accesses()
+		if("Death Commando")
+			return list(access_cent_general, access_cent_living, access_cent_medical, access_cent_security, access_cent_storage, access_cent_specops, access_cent_specops_commander, access_cent_blackops) + get_all_accesses()
+		if("Deathsquad Officer")
+			return get_all_centcom_access() + get_all_accesses()
 		if("Special Operations Officer")
+			return get_all_centcom_access() + get_all_accesses()
+		if("Nanotrasen Navy Representative")
 			return get_all_centcom_access() + get_all_accesses()
 		if("Nanotrasen Navy Officer")
 			return get_all_centcom_access() + get_all_accesses()
@@ -225,6 +215,19 @@
 			return get_all_centcom_access() + get_all_accesses()
 		if("Supreme Commander")
 			return get_all_centcom_access() + get_all_accesses()
+
+/proc/get_syndicate_access(job)
+	switch(job)
+		if("Syndicate Operative")
+			return list(access_syndicate)
+		if("Syndicate Operative Leader")
+			return list(access_syndicate, access_syndicate_leader)
+		if("Vox Raider")
+			return list(access_vox)
+		if("Vox Trader")
+			return list(access_vox)
+		if("Syndicate Commando")
+			return list(access_syndicate, access_syndicate_leader)
 
 /proc/get_all_accesses()
 	return list(access_security, access_sec_doors, access_brig, access_armory, access_forensics_lockers, access_court,
@@ -237,52 +240,62 @@
 	            access_hydroponics, access_library, access_lawyer, access_virology, access_psychiatrist, access_cmo, access_qm, access_clown, access_mime, access_surgery,
 	            access_theatre, access_research, access_mining, access_mailsorting,
 	            access_heads_vault, access_mining_station, access_xenobiology, access_ce, access_hop, access_hos, access_RC_announce,
-	            access_keycard_auth, access_tcomsat, access_gateway, access_xenoarch, access_paramedic, access_blueshield, access_customs, access_mechanic,access_weapons,
-	            access_pilot, access_ntrec, access_ntrep, access_magistrate, access_minisat)
+	            access_keycard_auth, access_tcomsat, access_gateway, access_xenoarch, access_paramedic, access_blueshield, access_mechanic,access_weapons,
+	            access_pilot, access_ntrep, access_magistrate, access_mineral_storeroom, access_minisat)
 
 /proc/get_all_centcom_access()
-	return list(access_cent_general, access_cent_thunder, access_cent_specops, access_cent_medical, access_cent_living, access_cent_storage, access_cent_teleporter, access_cent_creed, access_cent_captain)
+	return list(access_cent_general, access_cent_living, access_cent_medical, access_cent_security, access_cent_storage, access_cent_shuttles, access_cent_telecomms, access_cent_teleporter, access_cent_specops, access_cent_specops_commander, access_cent_blackops, access_cent_thunder, access_cent_bridge, access_cent_commander)
 
 /proc/get_all_syndicate_access()
-	return list(access_syndicate)
+	return list(access_syndicate, access_syndicate_leader, access_vox)
 
-/proc/get_region_accesses(var/code)
+/proc/get_all_misc_access()
+	return list(access_salvage_captain)
+
+/proc/get_absolutely_all_accesses()
+	return (get_all_accesses() | get_all_centcom_access() | get_all_syndicate_access() | get_all_misc_access())
+
+/proc/get_region_accesses(code)
 	switch(code)
-		if(0)
+		if(REGION_ALL)
 			return get_all_accesses()
-		if(1) //security
-			return list(access_sec_doors, access_security, access_brig, access_armory, access_forensics_lockers, access_court, access_customs, access_pilot, access_hos)
-		if(2) //medbay
+		if(REGION_GENERAL) //station general
+			return list(access_kitchen, access_bar, access_hydroponics, access_janitor, access_chapel_office, access_crematorium, access_library, access_theatre, access_lawyer, access_magistrate, access_clown, access_mime)
+		if(REGION_SECURITY) //security
+			return list(access_sec_doors, access_weapons, access_security, access_brig, access_armory, access_forensics_lockers, access_court, access_pilot, access_hos)
+		if(REGION_MEDBAY) //medbay
 			return list(access_medical, access_genetics, access_morgue, access_chemistry, access_psychiatrist, access_virology, access_surgery, access_cmo, access_paramedic)
-		if(3) //research
-			return list(access_research, access_tox, access_tox_storage, access_robotics, access_xenobiology, access_xenoarch, access_minisat, access_rd)
-		if(4) //engineering and maintenance
+		if(REGION_RESEARCH) //research
+			return list(access_research, access_tox, access_tox_storage, access_genetics, access_robotics, access_xenobiology, access_xenoarch, access_minisat, access_rd)
+		if(REGION_ENGINEERING) //engineering and maintenance
 			return list(access_construction, access_maint_tunnels, access_engine, access_engine_equip, access_external_airlocks, access_tech_storage, access_atmospherics, access_minisat, access_ce, access_mechanic)
-		if(5) //command
-			return list(access_heads, access_RC_announce, access_keycard_auth, access_change_ids, access_ai_upload, access_teleporter, access_eva, access_tcomsat, access_gateway, access_all_personal_lockers, access_heads_vault, access_blueshield, access_ntrec, access_ntrep, access_hop, access_captain)
-		if(6) //station general
-			return list(access_kitchen,access_bar, access_hydroponics, access_janitor, access_chapel_office, access_crematorium, access_library, access_theatre, access_lawyer, access_magistrate, access_clown, access_mime)
-		if(7) //supply
-			return list(access_mailsorting, access_mining, access_mining_station, access_cargo, access_qm)
+		if(REGION_SUPPLY) //supply
+			return list(access_mailsorting, access_mining, access_mining_station, access_mineral_storeroom, access_cargo, access_qm)
+		if(REGION_COMMAND) //command
+			return list(access_heads, access_RC_announce, access_keycard_auth, access_change_ids, access_ai_upload, access_teleporter, access_eva, access_tcomsat, access_gateway, access_all_personal_lockers, access_heads_vault, access_blueshield, access_ntrep, access_hop, access_captain)
+		if(REGION_CENTCOMM) //because why the heck not
+			return get_all_centcom_access() + get_all_accesses()
 
-/proc/get_region_accesses_name(var/code)
+/proc/get_region_accesses_name(code)
 	switch(code)
-		if(0)
+		if(REGION_ALL)
 			return "All"
-		if(1) //security
+		if(REGION_GENERAL) //station general
+			return "General"
+		if(REGION_SECURITY) //security
 			return "Security"
-		if(2) //medbay
+		if(REGION_MEDBAY) //medbay
 			return "Medbay"
-		if(3) //research
+		if(REGION_RESEARCH) //research
 			return "Research"
-		if(4) //engineering and maintenance
+		if(REGION_ENGINEERING) //engineering and maintenance
 			return "Engineering"
-		if(5) //command
-			return "Command"
-		if(6) //station general
-			return "Station General"
-		if(7) //supply
+		if(REGION_SUPPLY) //supply
 			return "Supply"
+		if(REGION_COMMAND) //command
+			return "Command"
+		if(REGION_CENTCOMM) //CC
+			return "CentComm"
 
 
 /proc/get_access_desc(A)
@@ -419,20 +432,18 @@
 			return "Brig"
 		if(access_blueshield)
 			return "Blueshield"
-		if(access_ntrec)
-			return "Nanotrasen Recruiter"
 		if(access_ntrep)
 			return "Nanotrasen Rep."
 		if(access_paramedic)
 			return "Paramedic"
-		if(access_customs)
-			return "Customs"
 		if(access_mechanic)
 			return "Mechanic Workshop"
 		if(access_pilot)
 			return "Security Pod Pilot"
 		if(access_magistrate)
 			return "Magistrate"
+		if(access_mineral_storeroom)
+			return "Mineral Storage"
 		if(access_minisat)
 			return "AI Satellite"
 		if(access_weapons)
@@ -441,28 +452,47 @@
 /proc/get_centcom_access_desc(A)
 	switch(A)
 		if(access_cent_general)
-			return "Code Grey"
-		if(access_cent_thunder)
-			return "Code Yellow"
-		if(access_cent_storage)
-			return "Code Orange"
+			return "General Access"
 		if(access_cent_living)
-			return "Code Green"
+			return "Living Quarters"
 		if(access_cent_medical)
-			return "Code White"
+			return "Medical"
+		if(access_cent_security)
+			return "Security"
+		if(access_cent_storage)
+			return "Storage"
+		if(access_cent_shuttles)
+			return "Shuttles"
+		if(access_cent_telecomms)
+			return "Telecommunications"
 		if(access_cent_teleporter)
-			return "Code Blue"
+			return "Teleporter"
 		if(access_cent_specops)
-			return "Code Black"
-		if(access_cent_creed)
-			return "Code Silver"
-		if(access_cent_captain)
-			return "Code Gold"
+			return "Special Ops"
+		if(access_cent_specops_commander)
+			return "Special Ops Commander"
+		if(access_cent_blackops)
+			return "Black Ops"
+		if(access_cent_thunder)
+			return "Thunderdome"
+		if(access_cent_bridge)
+			return "Bridge"
+		if(access_cent_commander)
+			return "Commander"
+
+/proc/get_syndicate_access_desc(A)
+	switch(A)
+		if(access_syndicate)
+			return "Syndicate Operative"
+		if(access_syndicate_leader)
+			return "Syndicate Operative Leader"
+		if(access_vox)
+			return "Vox"
 
 /proc/get_all_jobs()
 	var/list/all_jobs = list()
-	var/list/all_datums = typesof(/datum/job)
-	all_datums.Remove(list(/datum/job,/datum/job/ai,/datum/job/cyborg))
+	var/list/all_datums = subtypesof(/datum/job)
+	all_datums.Remove(list(/datum/job/ai,/datum/job/cyborg))
 	var/datum/job/jobdatum
 	for(var/jobtype in all_datums)
 		jobdatum = new jobtype
@@ -470,12 +500,12 @@
 	return all_jobs
 
 /proc/get_all_centcom_jobs()
-	return list("VIP Guest","Custodian","Thunderdome Overseer","Emergency Response Team","Emergency Response Team Leader","Intel Officer","Medical Officer","Death Commando","Research Officer","BlackOps Commander","Special Operations Officer","Nanotrasen Navy Officer","Nanotrasen Navy Captain","Supreme Commander")
+	return list("VIP Guest","Custodian","Thunderdome Overseer","Emergency Response Team Member","Emergency Response Team Leader","Intel Officer","Medical Officer","Death Commando","Research Officer","Deathsquad Officer","Special Operations Officer","Nanotrasen Navy Representative","Nanotrasen Navy Officer","Nanotrasen Navy Captain","Supreme Commander")
 
 //gets the actual job rank (ignoring alt titles)
 //this is used solely for sechuds
 /obj/proc/GetJobRealName()
-	if (!istype(src, /obj/item/device/pda) && !istype(src,/obj/item/weapon/card/id))
+	if(!istype(src, /obj/item/device/pda) && !istype(src,/obj/item/weapon/card/id))
 		return
 
 	var/rank
@@ -499,7 +529,7 @@
 //gets the alt title, failing that the actual job rank
 //this is unused
 /obj/proc/sdsdsd()	//GetJobDisplayName
-	if (!istype(src, /obj/item/device/pda) && !istype(src,/obj/item/weapon/card/id))
+	if(!istype(src, /obj/item/device/pda) && !istype(src,/obj/item/weapon/card/id))
 		return
 
 	var/assignment
@@ -513,6 +543,15 @@
 		return assignment
 
 	return "Unknown"
+
+proc/GetIdCard(var/mob/living/carbon/human/H)
+	if(H.wear_id)
+		var/id = H.wear_id.GetID()
+		if(id)
+			return id
+	if(H.get_active_hand())
+		var/obj/item/I = H.get_active_hand()
+		return I.GetID()
 
 proc/FindNameFromID(var/mob/living/carbon/human/H)
 	ASSERT(istype(H))
@@ -558,17 +597,17 @@ proc/get_all_job_icons() //For all existing HUD icons
 		var/job_icons = get_all_job_icons()
 		var/centcom = get_all_centcom_jobs()
 
+		if(I.assignment	in centcom) //Return with the NT logo if it is a Centcom job
+			return "Centcom"
+		if(I.rank in centcom)
+			return "Centcom"
+
 		if(I.assignment	in job_icons) //Check if the job has a hud icon
 			return I.assignment
 		if(I.rank in job_icons)
 			return I.rank
 
-		if(I.assignment	in centcom) //Return with the NT logo if it is a Centcom job
-			return "Centcom"
-		if(I.rank in centcom)
-			return "Centcom"
 	else
 		return
 
 	return "Unknown" //Return unknown if none of the above apply
-

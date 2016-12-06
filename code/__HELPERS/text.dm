@@ -15,8 +15,15 @@
 
 // Run all strings to be used in an SQL query through this proc first to properly escape out injection attempts.
 /proc/sanitizeSQL(var/t as text)
+	if(isnull(t))
+		return null
+	if(!istext(t))
+		t = "[t]" // Just quietly assume any non-texts are supposed to be text
 	var/sqltext = dbcon.Quote(t);
-	return copytext(sqltext, 2, lentext(sqltext)-1);//Quote() adds quotes around input, we already do that
+	return copytext(sqltext, 2, lentext(sqltext));//Quote() adds quotes around input, we already do that
+
+/proc/format_table_name(table as text)
+	return sqlfdbktableprefix + table
 
 /*
  * Text sanitization
@@ -34,11 +41,17 @@
 	return t
 
 //Removes a few problematic characters
-/proc/sanitize_simple(var/t,var/list/repl_chars = list("\n"="#","\t"="#","�"="�"))
+/proc/sanitize_simple(var/t,var/list/repl_chars = list("\n"="#","\t"="#"))
+	for(var/char in repl_chars)
+		t = replacetext(t, char, repl_chars[char])
+	return t
+
+/proc/readd_quotes(var/t)
+	var/list/repl_chars = list("&#34;" = "\"")
 	for(var/char in repl_chars)
 		var/index = findtext(t, char)
 		while(index)
-			t = copytext(t, 1, index) + repl_chars[char] + copytext(t, index+1)
+			t = copytext(t, 1, index) + repl_chars[char] + copytext(t, index+5)
 			index = findtext(t, char)
 	return t
 
@@ -73,7 +86,7 @@
 // Used to get a sanitized input.
 /proc/stripped_input(var/mob/user, var/message = "", var/title = "", var/default = "", var/max_length=MAX_MESSAGE_LEN)
 	var/name = input(user, message, title, default)
-	return strip_html_simple(name, max_length)
+	return strip_html_properly(name, max_length)
 
 //Filters out undesirable characters from names
 /proc/reject_bad_name(var/t_in, var/allow_numbers=0, var/max_length=MAX_NAME_LEN)
@@ -134,7 +147,7 @@
 	if(last_char_group == 1)
 		t_out = copytext(t_out,1,length(t_out))	//removes the last character (in this case a space)
 
-	for(var/bad_name in list("space","floor","wall","r-wall","monkey","unknown","inactive ai"))	//prevents these common metagamey names
+	for(var/bad_name in list("space","floor","wall","r-wall","monkey","unknown","inactive ai","plating"))	//prevents these common metagamey names
 		if(cmptext(t_out,bad_name))	return	//(not case sensitive)
 
 	return t_out
@@ -145,15 +158,15 @@
 proc/checkhtml(var/t)
 	t = sanitize_simple(t, list("&#"="."))
 	var/p = findtext(t,"<",1)
-	while (p)	//going through all the tags
+	while(p)	//going through all the tags
 		var/start = p++
 		var/tag = copytext(t,p, p+1)
-		if (tag != "/")
-			while (reject_bad_text(copytext(t, p, p+1), 1))
+		if(tag != "/")
+			while(reject_bad_text(copytext(t, p, p+1), 1))
 				tag = copytext(t,start, p)
 				p++
 			tag = copytext(t,start+1, p)
-			if (!(tag in paper_tag_whitelist))	//if it's unkown tag, disarming it
+			if(!(tag in paper_tag_whitelist))	//if it's unkown tag, disarming it
 				t = copytext(t,1,start-1) + "&lt;" + copytext(t,start+1)
 		p = findtext(t,"<",p)
 	return t
@@ -193,15 +206,23 @@ proc/checkhtml(var/t)
 /*
  * Text modification
  */
-/proc/replacetext(text, find, replacement)
-	return list2text(text2list(text, find), replacement)
+// See bygex.dm
+/proc/replace_characters(var/t,var/list/repl_chars)
+	for(var/char in repl_chars)
+		t = replacetext(t, char, repl_chars[char])
+	return t
 
-/proc/replacetextEx(text, find, replacement)
-	return list2text(text2listEx(text, find), replacement)
+//Strips the first char and returns it and the new string as a list
+/proc/strip_first(t)
+	return list(copytext(t, 1, 2), copytext(t, 2, 0))
+
+//Strips the last char and returns it and the new string as a list
+/proc/strip_last(t)
+	return list(copytext(t, 1, length(t)), copytext(t, length(t)))
 
 //Adds 'u' number of zeros ahead of the text 't'
 /proc/add_zero(t, u)
-	while (length(t) < u)
+	while(length(t) < u)
 		t = "0[t]"
 	return t
 
@@ -219,15 +240,15 @@ proc/checkhtml(var/t)
 
 //Returns a string with reserved characters and spaces before the first letter removed
 /proc/trim_left(text)
-	for (var/i = 1 to length(text))
-		if (text2ascii(text, i) > 32)
+	for(var/i = 1 to length(text))
+		if(text2ascii(text, i) > 32)
 			return copytext(text, i)
 	return ""
 
 //Returns a string with reserved characters and spaces after the last letter removed
 /proc/trim_right(text)
-	for (var/i = length(text), i > 0, i--)
-		if (text2ascii(text, i) > 32)
+	for(var/i = length(text), i > 0, i--)
+		if(text2ascii(text, i) > 32)
 			return copytext(text, 1, i + 1)
 
 	return ""
@@ -303,3 +324,110 @@ proc/checkhtml(var/t)
 	for(var/i = length(text); i > 0; i--)
 		new_text += copytext(text, i, i+1)
 	return new_text
+
+//This proc strips html properly, but it's not lazy like the other procs.
+//This means that it doesn't just remove < and > and call it a day.
+//Also limit the size of the input, if specified.
+/proc/strip_html_properly(var/input, var/max_length = MAX_MESSAGE_LEN, allow_lines = 0)
+	if(!input)
+		return
+	var/opentag = 1 //These store the position of < and > respectively.
+	var/closetag = 1
+	while(1)
+		opentag = findtext(input, "<")
+		closetag = findtext(input, ">")
+		if(closetag && opentag)
+			if(closetag < opentag)
+				input = copytext(input, (closetag + 1))
+			else
+				input = copytext(input, 1, opentag) + copytext(input, (closetag + 1))
+		else if(closetag || opentag)
+			if(opentag)
+				input = copytext(input, 1, opentag)
+			else
+				input = copytext(input, (closetag + 1))
+		else
+			break
+	if(max_length)
+		input = copytext(input,1,max_length)
+	return sanitize(input, allow_lines ? list("\t" = " ") : list("\n" = " ", "\t" = " "))
+
+/proc/trim_strip_html_properly(var/input, var/max_length = MAX_MESSAGE_LEN, allow_lines = 0)
+    return trim(strip_html_properly(input, max_length, allow_lines))
+
+//Used in preferences' SetFlavorText and human's set_flavor verb
+//Previews a string of len or less length
+/proc/TextPreview(var/string,var/len=40)
+	if(lentext(string) <= len)
+		if(!lentext(string))
+			return "\[...\]"
+		else
+			return html_encode(string) //NO DECODED HTML YOU CHUCKLEFUCKS
+	else
+		return "[copytext_preserve_html(string, 1, 37)]..."
+
+//alternative copytext() for encoded text, doesn't break html entities (&#34; and other)
+/proc/copytext_preserve_html(var/text, var/first, var/last)
+	return html_encode(copytext(html_decode(text), first, last))
+
+//Run sanitize(), but remove <, >, " first to prevent displaying them as &gt; &lt; &34; in some places, after html_encode().
+//Best used for sanitize object names, window titles.
+//If you have a problem with sanitize() in chat, when quotes and >, < are displayed as html entites -
+//this is a problem of double-encode(when & becomes &amp;), use sanitize() with encode=0, but not the sanitizeSafe()!
+/proc/sanitizeSafe(var/input, var/max_length = MAX_MESSAGE_LEN, var/encode = 1, var/trim = 1, var/extra = 1)
+	return sanitize(replace_characters(input, list(">"=" ","<"=" ", "\""="'")), max_length, encode, trim, extra)
+
+
+//Replaces \red \blue \green \b etc with span classes for to_chat
+/proc/replace_text_macro(match, code, rest)
+    var/regex/text_macro = new("(\\xFF.)(.*)$")
+    switch(code)
+        if("\red")
+            return "<span class='warning'>[text_macro.Replace(rest, /proc/replace_text_macro)]</span>"
+        if("\blue", "\green")
+            return "<span class='notice'>[text_macro.Replace(rest, /proc/replace_text_macro)]</span>"
+        if("\b")
+            return "<b>[text_macro.Replace(rest, /proc/replace_text_macro)]</b>"
+        else
+            return text_macro.Replace(rest, /proc/replace_text_macro)
+
+/proc/macro2html(text)
+    var/static/regex/text_macro = new("(\\xFF.)(.*)$")
+    return text_macro.Replace(text, /proc/replace_text_macro)
+
+/proc/dmm_encode(text)
+	// First, go through and nix out any of our escape sequences so we don't leave ourselves open to some escape sequence attack
+	// Some coder will probably despise me for this, years down the line
+
+	var/list/repl_chars = list("#?qt;", "#?lbr;", "#?rbr;")
+	for(var/char in repl_chars)
+		var/index = findtext(text, char)
+		var/keylength = length(char)
+		while(index)
+			log_runtime(EXCEPTION("Bad string given to dmm encoder! [text]"))
+			// Replace w/ underscore to prevent "&#3&#123;4;" from cheesing the radar
+			// Should probably also use canon text replacing procs
+			text = copytext(text, 1, index) + "_" + copytext(text, index+keylength)
+			index = findtext(text, char)
+
+	// Then, replace characters as normal
+	var/list/repl_chars_2 = list("\"" = "#?qt;", "{" = "#?lbr;", "}" = "#?rbr;")
+	for(var/char in repl_chars_2)
+		var/index = findtext(text, char)
+		var/keylength = length(char)
+		while(index)
+			text = copytext(text, 1, index) + repl_chars_2[char] + copytext(text, index+keylength)
+			index = findtext(text, char)
+	return text
+
+
+/proc/dmm_decode(text)
+	// Replace what we extracted above
+	var/list/repl_chars = list("#?qt;" = "\"", "#?lbr;" = "{", "#?rbr;" = "}")
+	for(var/char in repl_chars)
+		var/index = findtext(text, char)
+		var/keylength = length(char)
+		while(index)
+			text = copytext(text, 1, index) + repl_chars[char] + copytext(text, index+keylength)
+			index = findtext(text, char)
+	return text

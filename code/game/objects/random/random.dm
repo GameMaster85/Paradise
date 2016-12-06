@@ -9,9 +9,9 @@
 // creates a new object and deletes itself
 /obj/random/New()
 	..()
-	if (!prob(spawn_nothing_percentage))
+	if(!prob(spawn_nothing_percentage))
 		spawn_item()
-	del src
+	qdel(src)
 
 
 // this function should return a specific item to spawn
@@ -56,11 +56,11 @@
 	icon = 'icons/obj/power.dmi'
 	icon_state = "cell"
 	item_to_spawn()
-		return pick(prob(10);/obj/item/weapon/cell/crap,\
-					prob(40);/obj/item/weapon/cell,\
-					prob(40);/obj/item/weapon/cell/high,\
-					prob(9);/obj/item/weapon/cell/super,\
-					prob(1);/obj/item/weapon/cell/hyper)
+		return pick(prob(10);/obj/item/weapon/stock_parts/cell/crap,\
+					prob(40);/obj/item/weapon/stock_parts/cell,\
+					prob(40);/obj/item/weapon/stock_parts/cell/high,\
+					prob(9);/obj/item/weapon/stock_parts/cell/super,\
+					prob(1);/obj/item/weapon/stock_parts/cell/hyper)
 
 
 /obj/random/bomb_supply
@@ -94,11 +94,12 @@
 	item_to_spawn()
 		return pick(prob(3);/obj/random/powercell,\
 					prob(2);/obj/random/technology_scanner,\
-					prob(1);/obj/item/weapon/packageWrap,\
+					prob(1);/obj/item/stack/packageWrap,\
 					prob(2);/obj/random/bomb_supply,\
 					prob(1);/obj/item/weapon/extinguisher,\
-					prob(1);/obj/item/clothing/gloves/fyellow,\
+					prob(1);/obj/item/clothing/gloves/color/fyellow,\
 					prob(3);/obj/item/stack/cable_coil,\
 					prob(2);/obj/random/toolbox,\
 					prob(2);/obj/item/weapon/storage/belt/utility,\
-					prob(5);/obj/random/tool)
+					prob(5);/obj/random/tool,\
+					prob(3);/obj/item/stack/tape_roll)

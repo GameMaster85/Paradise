@@ -35,14 +35,11 @@
 	if(wires & 2)
 		return src.attack_hand(user)
 	else
-		user << "Error, no route to host."
+		to_chat(user, "Error, no route to host.")
 
-/obj/machinery/door_control/attack_paw(mob/user as mob)
-	return src.attack_hand(user)
-
-/obj/machinery/door_control/attackby(obj/item/weapon/W, mob/user as mob)
+/obj/machinery/door_control/attackby(obj/item/weapon/W, mob/user as mob, params)
 	/* For later implementation
-	if (istype(W, /obj/item/weapon/screwdriver))
+	if(istype(W, /obj/item/weapon/screwdriver))
 	{
 		if(wiresexposed)
 			icon_state = "doorctrl0"
@@ -57,11 +54,14 @@
 	*/
 	if(istype(W, /obj/item/device/detective_scanner))
 		return
-	if(istype(W, /obj/item/weapon/card/emag))
+	return src.attack_hand(user)
+
+/obj/machinery/door_control/emag_act(user as mob)
+	if(!emagged)
+		emagged = 1
 		req_access = list()
 		req_one_access = list()
 		playsound(src.loc, "sparks", 100, 1)
-	return src.attack_hand(user)
 
 /obj/machinery/door_control/attack_hand(mob/user as mob)
 	src.add_fingerprint(usr)
@@ -69,7 +69,7 @@
 		return
 
 	if(!allowed(user) && (wires & 1))
-		user << "\red Access Denied"
+		to_chat(user, "\red Access Denied")
 		flick("doorctrl-denied",src)
 		return
 
@@ -81,7 +81,7 @@
 		for(var/obj/machinery/door/airlock/D in range(range))
 			if(D.id_tag == src.id)
 				if(specialfunctions & OPEN)
-					if (D.density)
+					if(D.density)
 						spawn(0)
 							D.open()
 							return
@@ -95,24 +95,23 @@
 					if(specialfunctions & BOLTS)
 						D.lock()
 					if(specialfunctions & SHOCK)
-						D.secondsElectrified = -1
+						D.electrify(-1)
 					if(specialfunctions & SAFE)
 						D.safe = 0
 				else
 					if(specialfunctions & IDSCAN)
 						D.aiDisabledIdScanner = 0
 					if(specialfunctions & BOLTS)
-						if(!D.isWireCut(4) && D.arePowerSystemsOn())
-							D.unlock()
+						D.unlock()
 					if(specialfunctions & SHOCK)
-						D.secondsElectrified = 0
+						D.electrify(0)
 					if(specialfunctions & SAFE)
 						D.safe = 1
 
 	else
-		for(var/obj/machinery/door/poddoor/M in world)
-			if (M.id == src.id)
-				if (M.density)
+		for(var/obj/machinery/door/poddoor/M in airlocks)
+			if(M.id_tag == src.id)
+				if(M.density)
 					spawn( 0 )
 						M.open()
 						return
@@ -132,54 +131,3 @@
 		icon_state = "doorctrl-p"
 	else
 		icon_state = "doorctrl0"
-
-/obj/machinery/driver_button/attack_ai(mob/user as mob)
-	return src.attack_hand(user)
-
-/obj/machinery/driver_button/attack_paw(mob/user as mob)
-	return src.attack_hand(user)
-
-/obj/machinery/driver_button/attackby(obj/item/weapon/W, mob/user as mob)
-
-	if(istype(W, /obj/item/device/detective_scanner))
-		return
-	return src.attack_hand(user)
-
-/obj/machinery/driver_button/attack_hand(mob/user as mob)
-
-	src.add_fingerprint(usr)
-	if(stat & (NOPOWER|BROKEN))
-		return
-	if(active)
-		return
-	add_fingerprint(user)
-
-	use_power(5)
-
-	active = 1
-	icon_state = "launcheract"
-
-	for(var/obj/machinery/door/poddoor/M in world)
-		if (M.id == src.id)
-			spawn( 0 )
-				M.open()
-				return
-
-	sleep(20)
-
-	for(var/obj/machinery/mass_driver/M in world)
-		if(M.id == src.id)
-			M.drive()
-
-	sleep(50)
-
-	for(var/obj/machinery/door/poddoor/M in world)
-		if (M.id == src.id)
-			spawn( 0 )
-				M.close()
-				return
-
-	icon_state = "launcherbtt"
-	active = 0
-
-	return

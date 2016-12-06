@@ -45,7 +45,7 @@
 	if(severity && prob(30))
 		src.visible_message("The [src] crumbles away, leaving some dust and gravel behind.")*/
 
-/obj/item/weapon/ore/strangerock/attackby(obj/item/weapon/W as obj, mob/user as mob)
+/obj/item/weapon/ore/strangerock/attackby(obj/item/weapon/W as obj, mob/user as mob, params)
 	if(istype(W,/obj/item/weapon/weldingtool/))
 		var/obj/item/weapon/weldingtool/w = W
 		if(w.isOn())
@@ -57,7 +57,7 @@
 				else
 					for(var/mob/M in viewers(world.view, user))
 						M.show_message("<span class='info'>[src] burns away into nothing.</span>",1)
-				del(src)
+				qdel(src)
 				w.remove_fuel(4)
 			else
 				for(var/mob/M in viewers(world.view, user))
@@ -73,7 +73,7 @@
 	..()
 	if(prob(33))
 		src.visible_message("<span class='warning'>[src] crumbles away, leaving some dust and gravel behind.</span>")
-		del(src)
+		qdel(src)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Archaeological finds
@@ -138,7 +138,7 @@
 			if(prob(25))
 				new_item = new /obj/item/weapon/kitchen/utensil/fork(src.loc)
 			else if(prob(50))
-				new_item = new /obj/item/weapon/kitchen/utensil/knife(src.loc)
+				new_item = new /obj/item/weapon/kitchen/knife(src.loc)
 			else
 				new_item = new /obj/item/weapon/kitchen/utensil/spoon(src.loc)
 			additional_desc = "[pick("It's like no [item_type] you've ever seen before",\
@@ -164,7 +164,7 @@
 				"You wonder what kind of music was made with it")]."
 		if(6)
 			item_type = "[pick("bladed knife","serrated blade","sharp cutting implement")]"
-			new_item = new /obj/item/weapon/kitchenknife(src.loc)
+			new_item = new /obj/item/weapon/kitchen/knife(src.loc)
 			additional_desc = "[pick("It doesn't look safe.",\
 			"It looks wickedly jagged",\
 			"There appear to be [pick("dark red","dark purple","dark green","dark blue")] stains along the edges")]."
@@ -183,12 +183,12 @@
 			apply_image_decorations = 1
 		if(8)
 			item_type = "handcuffs"
-			new_item = new /obj/item/weapon/handcuffs(src.loc)
+			new_item = new /obj/item/weapon/restraints/handcuffs(src.loc)
 			additional_desc = "[pick("They appear to be for securing two things together","Looks kinky","Doesn't seem like a children's toy")]."
 		if(9)
 			item_type = "[pick("wicked","evil","byzantine","dangerous")] looking [pick("device","contraption","thing","trap")]"
 			apply_prefix = 0
-			new_item = new /obj/item/weapon/legcuffs/beartrap(src.loc)
+			new_item = new /obj/item/weapon/restraints/legcuffs/beartrap(src.loc)
 			additional_desc = "[pick("It looks like it could take a limb off",\
 			"Could be some kind of animal trap",\
 			"There appear to be [pick("dark red","dark purple","dark green","dark blue")] stains along part of it")]."
@@ -250,7 +250,7 @@
 			if(prob(75))
 				new_item = new /obj/item/weapon/pen(src.loc)
 			else
-				new_item = new /obj/item/weapon/pen/sleepypen(src.loc)
+				new_item = new /obj/item/weapon/pen/sleepy(src.loc)
 			if(prob(30))
 				apply_image_decorations = 1
 		if(16)
@@ -296,9 +296,7 @@
 		if(20)
 			//arcane clothing
 			apply_prefix = 0
-			var/list/possible_spawns = list(/obj/item/clothing/head/culthood,
-			/obj/item/clothing/head/magus,
-			/obj/item/clothing/head/culthood/alt,
+			var/list/possible_spawns = list(/obj/item/clothing/head/magus,
 			/obj/item/clothing/head/helmet/space/cult)
 
 			var/new_type = pick(possible_spawns)
@@ -311,9 +309,9 @@
 			apply_material_decorations = 0
 		if(22)
 			if(prob(50))
-				new_item = getFromPool(/obj/item/weapon/shard, loc)
+				new_item = new /obj/item/weapon/shard(loc)
 			else
-				new_item = getFromPool(/obj/item/weapon/shard/plasma, loc)
+				new_item = new /obj/item/weapon/shard/plasma(loc)
 
 			apply_prefix = 0
 			apply_image_decorations = 0
@@ -324,8 +322,7 @@
 			apply_image_decorations = 0
 			apply_material_decorations = 0
 		if(24)
-			var/list/possible_spawns = typesof(/obj/item/weapon/stock_parts)
-			possible_spawns -= /obj/item/weapon/stock_parts
+			var/list/possible_spawns = subtypesof(/obj/item/weapon/stock_parts)
 			possible_spawns -= /obj/item/weapon/stock_parts/subspace
 
 			var/new_type = pick(possible_spawns)
@@ -347,7 +344,7 @@
 			if(spawn_type)
 				var/obj/item/weapon/gun/energy/new_gun = new spawn_type(src.loc)
 				new_item = new_gun
-				new_item.icon_state = "egun[rand(1,6)]"
+				new_item.icon_state = pick("laser","retro","laser","caplaser","xray","energy","laser")
 				new_gun.desc = "This is an antique energy weapon, you're not sure if it will fire or not."
 
 				//5% chance to explode when first fired
@@ -544,12 +541,14 @@
 
 		if(talkative)
 			new_item.talking_atom = new()
-			talking_atom.holder_atom = new_item
-			talking_atom.init()
+			if(talking_atom)
+				talking_atom.holder_atom = new_item
+				talking_atom.init()
 
-		del(src)
+		qdel(src)
 
 	else if(talkative)
 		src.talking_atom = new()
-		talking_atom.holder_atom = src
-		talking_atom.init()
+		if(talking_atom)
+			talking_atom.holder_atom = src
+			talking_atom.init()

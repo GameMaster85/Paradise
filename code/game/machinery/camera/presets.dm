@@ -57,7 +57,7 @@
 	return O
 
 /obj/machinery/camera/proc/isXRay()
-	var/O = locate(/obj/item/weapon/reagent_containers/food/snacks/grown/carrot) in assembly.upgrades
+	var/O = locate(/obj/item/device/analyzer) in assembly.upgrades
 	return O
 
 /obj/machinery/camera/proc/isMotion()
@@ -68,10 +68,25 @@
 
 /obj/machinery/camera/proc/upgradeEmpProof()
 	assembly.upgrades.Add(new /obj/item/stack/sheet/mineral/plasma(assembly))
+	setPowerUsage()
 
 /obj/machinery/camera/proc/upgradeXRay()
-	assembly.upgrades.Add(new /obj/item/weapon/reagent_containers/food/snacks/grown/carrot(assembly))
+	assembly.upgrades.Add(new /obj/item/device/analyzer(assembly))
+	setPowerUsage()
+	//Update what it can see.
+	cameranet.updateVisibility(src, 0)
 
 // If you are upgrading Motion, and it isn't in the camera's New(), add it to the machines list.
 /obj/machinery/camera/proc/upgradeMotion()
 	assembly.upgrades.Add(new /obj/item/device/assembly/prox_sensor(assembly))
+	setPowerUsage()
+	// Add it to machines that process
+	machine_processing |= src
+
+/obj/machinery/camera/proc/setPowerUsage()
+	var/mult = 1
+	if(isXRay())
+		mult++
+	if(isMotion())
+		mult++
+	active_power_usage = mult*initial(active_power_usage)

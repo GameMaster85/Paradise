@@ -5,12 +5,12 @@
 	icon_state = "grille"
 	density = 1
 	anchored = 1
-	flags = FPRINT | CONDUCT
+	flags = CONDUCT
 	pressure_resistance = 5*ONE_ATMOSPHERE
 	layer = 2.9
-	explosion_resistance = 5
 	var/health = 10
 	var/destroyed = 0
+	level = 3
 
 
 /obj/structure/grille/fence/
@@ -37,28 +37,19 @@
 	//height=42
 	icon='icons/fence-ns.dmi'
 
-/obj/structure/grille/Destroy()
-	loc = null //garbage collect
-
-
 /obj/structure/grille/ex_act(severity)
-	returnToPool(src)
+	qdel(src)
 
 /obj/structure/grille/blob_act()
-	returnToPool(src)
-
-/obj/structure/grille/meteorhit(var/obj/M)
-	returnToPool(src)
-
+	qdel(src)
 
 /obj/structure/grille/Bumped(atom/user)
 	if(ismob(user)) shock(user, 70)
 
 
-/obj/structure/grille/attack_paw(mob/user as mob)
-	attack_hand(user)
-
-/obj/structure/grille/attack_hand(mob/user as mob)
+/obj/structure/grille/attack_hand(mob/living/user as mob)
+	user.changeNext_move(CLICK_CD_MELEE)
+	user.do_attack_animation(src)
 	playsound(loc, 'sound/effects/grillehit.ogg', 80, 1)
 	user.visible_message("<span class='warning'>[user] kicks [src].</span>", \
 						 "<span class='warning'>You kick [src].</span>", \
@@ -66,15 +57,16 @@
 
 	if(shock(user, 70))
 		return
-	if(M_HULK in user.mutations)
+	if(HULK in user.mutations)
 		health -= 5
 	else
 		health -= 1
 	healthcheck()
 
-/obj/structure/grille/attack_alien(mob/user as mob)
+/obj/structure/grille/attack_alien(mob/living/user as mob)
 	if(istype(user, /mob/living/carbon/alien/larva))	return
-
+	user.changeNext_move(CLICK_CD_MELEE)
+	user.do_attack_animation(src)
 	playsound(loc, 'sound/effects/grillehit.ogg', 80, 1)
 	user.visible_message("<span class='warning'>[user] mangles [src].</span>", \
 						 "<span class='warning'>You mangle [src].</span>", \
@@ -85,9 +77,11 @@
 		healthcheck()
 		return
 
-/obj/structure/grille/attack_slime(mob/user as mob)
+/obj/structure/grille/attack_slime(mob/living/user as mob)
+	user.changeNext_move(CLICK_CD_MELEE)
+	user.do_attack_animation(src)
 	var/mob/living/carbon/slime/S = user
-	if (!S.is_adult)
+	if(!S.is_adult)
 		return
 
 	playsound(loc, 'sound/effects/grillehit.ogg', 80, 1)
@@ -101,7 +95,8 @@
 
 /obj/structure/grille/attack_animal(var/mob/living/simple_animal/M as mob)
 	if(M.melee_damage_upper == 0)	return
-
+	M.changeNext_move(CLICK_CD_MELEE)
+	M.do_attack_animation(src)
 	playsound(loc, 'sound/effects/grillehit.ogg', 80, 1)
 	M.visible_message("<span class='warning'>[M] smashes against [src].</span>", \
 					  "<span class='warning'>You smash against [src].</span>", \
@@ -127,24 +122,31 @@
 		else
 			return !density
 
+/obj/structure/grille/CanAStarPass(ID, dir, caller)
+	. = !density
+	if(ismovableatom(caller))
+		var/atom/movable/mover = caller
+		. = . || mover.checkpass(PASSGRILLE)
+
 /obj/structure/grille/bullet_act(var/obj/item/projectile/Proj)
-
-	if(!Proj)	return
-
-	//Tasers and the like should not damage grilles.
-	if(Proj.damage_type == STAMINA)
+	if(!Proj)
 		return
+	..()
+	if((Proj.damage_type != STAMINA)) //Grilles can't be exhausted to death
+		src.health -= Proj.damage*0.3
+		healthcheck()
+	return
 
-	src.health -= Proj.damage*0.2
-	healthcheck()
-	return 0
-
-/obj/structure/grille/attackby(obj/item/weapon/W as obj, mob/user as mob)
+/obj/structure/grille/attackby(obj/item/weapon/W as obj, mob/user as mob, params)
+	user.changeNext_move(CLICK_CD_MELEE)
 	if(iswirecutter(W))
 		if(!shock(user, 100))
 			playsound(loc, 'sound/items/Wirecutter.ogg', 100, 1)
-			new /obj/item/stack/rods(loc, 2)
-			returnToPool(src)
+			if(!destroyed)
+				new /obj/item/stack/rods(loc, 2)
+			else
+				new /obj/item/stack/rods(loc)
+			qdel(src)
 	else if((isscrewdriver(W)) && (istype(loc, /turf/simulated) || anchored))
 		if(!shock(user, 90))
 			playsound(loc, 'sound/items/Screwdriver.ogg', 100, 1)
@@ -171,18 +173,18 @@
 					else
 						dir_to_set = 4
 			else
-				user << "<span class='notice'>You can't reach.</span>"
+				to_chat(user, "<span class='notice'>You can't reach.</span>")
 				return //Only works for cardinal direcitons, diagonals aren't supposed to work like this.
 		for(var/obj/structure/window/WINDOW in loc)
 			if(WINDOW.dir == dir_to_set)
-				user << "<span class='notice'>There is already a window facing this way there.</span>"
+				to_chat(user, "<span class='notice'>There is already a window facing this way there.</span>")
 				return
-		user << "<span class='notice'>You start placing the window.</span>"
-		if(do_after(user,20))
+		to_chat(user, "<span class='notice'>You start placing the window.</span>")
+		if(do_after(user,20, target = src))
 			if(!src) return //Grille destroyed while waiting
 			for(var/obj/structure/window/WINDOW in loc)
 				if(WINDOW.dir == dir_to_set)//checking this for a 2nd time to check if a window was made while we were waiting.
-					user << "<span class='notice'>There is already a window facing this way there.</span>"
+					to_chat(user, "<span class='notice'>There is already a window facing this way there.</span>")
 					return
 			var/obj/structure/window/WD
 			if(istype(W,/obj/item/stack/sheet/rglass))
@@ -199,7 +201,7 @@
 			WD.state = 0
 			var/obj/item/stack/ST = W
 			ST.use(1)
-			user << "<span class='notice'>You place the [WD] on [src].</span>"
+			to_chat(user, "<span class='notice'>You place the [WD] on [src].</span>")
 			WD.update_icon()
 		return
 //window placing end
@@ -229,7 +231,7 @@
 		else
 			if(health <= -6)
 				new /obj/item/stack/rods(loc)
-				returnToPool(src)
+				qdel(src)
 				return
 	return
 
@@ -247,7 +249,7 @@
 	var/obj/structure/cable/C = T.get_cable_node()
 	if(C)
 		if(electrocute_mob(user, C, src))
-			var/datum/effect/effect/system/spark_spread/s = new /datum/effect/effect/system/spark_spread
+			var/datum/effect/system/spark_spread/s = new /datum/effect/system/spark_spread
 			s.set_up(3, 1, src)
 			s.start()
 			return 1
@@ -255,7 +257,7 @@
 			return 0
 	return 0
 
-/obj/structure/grille/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume)
+/obj/structure/grille/temperature_expose(datum/gas_mixture/air, exposed_temperature, exposed_volume)
 	if(!destroyed)
 		if(exposed_temperature > T0C + 1500)
 			health -= 1

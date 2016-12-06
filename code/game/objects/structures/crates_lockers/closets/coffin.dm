@@ -4,6 +4,9 @@
 	icon_state = "coffin"
 	icon_closed = "coffin"
 	icon_opened = "coffin_open"
+	burn_state = FLAMMABLE
+	burntime = 20
+	material_drop = /obj/item/stack/sheet/wood
 
 /obj/structure/closet/coffin/update_icon()
 	if(!opened)
@@ -16,3 +19,5 @@
 	icon_state = "sarc"
 	icon_closed = "sarc"
 	icon_opened = "sarc_open"
+	sound = 'sound/effects/stonedoor_openclose.ogg'
+	material_drop = /obj/item/stack/sheet/mineral/sandstone

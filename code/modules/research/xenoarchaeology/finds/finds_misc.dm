@@ -24,21 +24,20 @@
 		else
 	return
 
-/obj/item/weapon/shard/plasma/attackby(obj/item/weapon/W as obj, mob/user as mob)
-	..()
-	if ( istype(W, /obj/item/weapon/weldingtool))
+/obj/item/weapon/shard/plasma/attackby(obj/item/weapon/W as obj, mob/user as mob, params)
+	if( istype(W, /obj/item/weapon/weldingtool))
 		var/obj/item/weapon/weldingtool/WT = W
 		if(WT.remove_fuel(0, user))
 			var/obj/item/stack/sheet/plasmaglass/NG = new (user.loc)
-			for (var/obj/item/stack/sheet/plasmaglass/G in user.loc)
+			for(var/obj/item/stack/sheet/plasmaglass/G in user.loc)
 				if(G==NG)
 					continue
 				if(G.amount>=G.max_amount)
 					continue
-				G.attackby(NG, user)
-				usr << "You add the newly-formed plasma glass to the stack. It now contains [NG.amount] sheets."
+				G.attackby(NG, user, params)
+				to_chat(usr, "You add the newly-formed plasma glass to the stack. It now contains [NG.amount] sheets.")
 			//SN src = null
-			returnToPool(src)
+			qdel(src)
 			return
 	return ..()
 

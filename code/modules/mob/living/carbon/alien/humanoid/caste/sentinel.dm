@@ -1,12 +1,9 @@
 /mob/living/carbon/alien/humanoid/sentinel
 	name = "alien sentinel"
 	caste = "s"
-	maxHealth = 125
-	health = 125
-	storedPlasma = 100
-	max_plasma = 250
+	maxHealth = 150
+	health = 150
 	icon_state = "aliens_s"
-	plasma_rate = 10
 
 /mob/living/carbon/alien/humanoid/sentinel/large
 	name = "alien praetorian"
@@ -26,38 +23,36 @@
 	large = 1
 
 /mob/living/carbon/alien/humanoid/sentinel/large/update_icons()
-	lying_prev = lying	//so we don't update overlays for lying/standing unless our stance changes again
-	update_hud()		//TODO: remove the need for this to be here
 	overlays.Cut()
-	if(lying)
-		if(resting)					icon_state = "prat_sleep"
-		else						icon_state = "prat_l"
-		for(var/image/I in overlays_lying)
-			overlays += I
+	if(stat == DEAD)
+		icon_state = "prat_dead"
+	else if(stat == UNCONSCIOUS || lying || resting)
+		icon_state = "prat_sleep"
 	else
 		icon_state = "prat_s"
-		for(var/image/I in overlays_standing)
-			overlays += I
+
+	for(var/image/I in overlays_standing)
+		overlays += I
 
 /mob/living/carbon/alien/humanoid/sentinel/New()
-	var/datum/reagents/R = new/datum/reagents(100)
-	reagents = R
-	R.my_atom = src
+	create_reagents(100)
 	if(name == "alien sentinel")
 		name = text("alien sentinel ([rand(1, 1000)])")
 	real_name = name
-	verbs.Add(/mob/living/carbon/alien/humanoid/proc/corrosive_acid,/mob/living/carbon/alien/humanoid/proc/neurotoxin)
+	alien_organs += new /obj/item/organ/internal/xenos/plasmavessel
+	alien_organs += new /obj/item/organ/internal/xenos/acidgland
+	alien_organs += new /obj/item/organ/internal/xenos/neurotoxin
 	..()
 
 /mob/living/carbon/alien/humanoid/sentinel/handle_regular_hud_updates()
 	..() //-Yvarov
 
-	if (healths)
-		if (stat != 2)
+	if(healths)
+		if(stat != 2)
 			switch(health)
-				if(125 to INFINITY)
+				if(150 to INFINITY)
 					healths.icon_state = "health0"
-				if(100 to 125)
+				if(100 to 150)
 					healths.icon_state = "health1"
 				if(75 to 100)
 					healths.icon_state = "health2"
@@ -78,7 +73,7 @@
 
 	if(powerc(250))
 		adjustToxLoss(-250)
-		src << "\green You begin to evolve!"
+		to_chat(src, "\green You begin to evolve!")
 		for(var/mob/O in viewers(src, null))
 			O.show_message(text("<span class='alertalien'>[src] begins to twist and contort!</span>"), 1)
 		var/mob/living/carbon/alien/humanoid/sentinel/praetorian/new_xeno = new(loc)
@@ -87,6 +82,6 @@
 		else
 			new_xeno.key = key
 		new_xeno.mind.name = new_xeno.name
-		del(src)
+		qdel(src)
 	return
 */

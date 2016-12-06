@@ -40,22 +40,48 @@ var/const/HOLOPAD_MODE = 0
 	var/last_request = 0 //to prevent request spam. ~Carn
 	var/holo_range = 5 // Change to change how far the AI can move away from the holopad before deactivating.
 
+/obj/machinery/hologram/holopad/New()
+	..()
+	component_parts = list()
+	component_parts += new /obj/item/weapon/circuitboard/holopad(null)
+	component_parts += new /obj/item/weapon/stock_parts/capacitor(null)
+	RefreshParts()
+
+/obj/machinery/hologram/holopad/RefreshParts()
+	var/holograph_range = 4
+	for(var/obj/item/weapon/stock_parts/capacitor/B in component_parts)
+		holograph_range += 1 * B.rating
+	holo_range = holograph_range
+
+/obj/machinery/hologram/holopad/attackby(obj/item/P as obj, mob/user as mob, params)
+	if(default_deconstruction_screwdriver(user, "holopad_open", "holopad0", P))
+		return
+
+	if(exchange_parts(user, P))
+		return
+
+	if(default_unfasten_wrench(user, P))
+		return
+
+	default_deconstruction_crowbar(P)
+
+
 /obj/machinery/hologram/holopad/attack_hand(var/mob/living/carbon/human/user) //Carn: Hologram requests.
 	if(!istype(user))
 		return
 	if(alert(user,"Would you like to request an AI's presence?",,"Yes","No") == "Yes")
 		if(last_request + 200 < world.time) //don't spam the AI with requests you jerk!
 			last_request = world.time
-			user << "<span class='notice'>You request an AI's presence.</span>"
+			to_chat(user, "<span class='notice'>You request an AI's presence.</span>")
 			var/area/area = get_area(src)
 			for(var/mob/living/silicon/ai/AI in living_mob_list)
 				if(!AI.client)	continue
-				AI << "<span class='info'>Your presence is requested at <a href='?src=\ref[AI];jumptoholopad=\ref[src]'>\the [area]</a>.</span>"
+				to_chat(AI, "<span class='info'>Your presence is requested at <a href='?src=[AI.UID()];jumptoholopad=\ref[src]'>\the [area]</a>.</span>")
 		else
-			user << "<span class='notice'>A request for AI presence was already sent recently.</span>"
+			to_chat(user, "<span class='notice'>A request for AI presence was already sent recently.</span>")
 
 /obj/machinery/hologram/holopad/attack_ai(mob/living/silicon/ai/user)
-	if (!istype(user))
+	if(!istype(user))
 		return
 	/*There are pretty much only three ways to interact here.
 	I don't need to check for client since they're clicking on an object.
@@ -64,30 +90,34 @@ var/const/HOLOPAD_MODE = 0
 		user.eyeobj.setLoc(get_turf(src))
 	else if(!hologram)//If there is no hologram, possibly make one.
 		activate_holo(user)
-	else if(master==user)//If there is a hologram, remove it. But only if the user is the master. Otherwise do nothing.
+	else if(master == user)//If there is a hologram, remove it. But only if the user is the master. Otherwise do nothing.
 		clear_holo()
 	return
 
 /obj/machinery/hologram/holopad/proc/activate_holo(mob/living/silicon/ai/user)
 	if(!(stat & NOPOWER) && user.eyeobj.loc == src.loc)//If the projector has power and client eye is on it.
+		if(user.holo)
+			var/obj/machinery/hologram/holopad/current = user.holo
+			current.clear_holo()
 		if(!hologram)//If there is not already a hologram.
 			create_holo(user)//Create one.
 			src.visible_message("A holographic image of [user] flicks to life right before your eyes!")
 		else
-			user << "\red ERROR: \black Image feed in progress."
+			to_chat(user, "<font color='red'>ERROR:</font> Image feed in progress.")
 	else
-		user << "\red ERROR: \black Unable to project hologram."
+		to_chat(user, "<font color='red'>ERROR:</font> Unable to project hologram.")
 	return
 
 /*This is the proc for special two-way communication between AI and holopad/people talking near holopad.
 For the other part of the code, check silicon say.dm. Particularly robot talk.*/
-/obj/machinery/hologram/holopad/hear_talk(mob/living/M, text, verb)
+/obj/machinery/hologram/holopad/hear_talk(mob/living/M, text, verb, datum/language/speaking)
+	if(M && hologram && master)//Master is mostly a safety in case lag hits or something.
+		master.relay_speech(M, text, verb, speaking)
+
+/obj/machinery/hologram/holopad/hear_message(mob/living/M, text)
 	if(M&&hologram&&master)//Master is mostly a safety in case lag hits or something.
-		if(!master.say_understands(M))//The AI will be able to understand most mobs talking through the holopad.
-			text = stars(text)
 		var/name_used = M.GetVoice()
-		//This communication is imperfect because the holopad "filters" voices and is only designed to connect to the master only.
-		var/rendered = "<i><span class='game say'>Holopad received, <span class='name'>[name_used]</span> [verb], <span class='message'>\"[text]\"</span></span></i>"
+		var/rendered = "<i><span class='game say'>Holopad received, <span class='name'>[name_used]</span> [text]</span></i>"
 		master.show_message(rendered, 2)
 	return
 
@@ -98,8 +128,8 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 	hologram.layer = FLY_LAYER//Above all the other objects/mobs. Or the vast majority of them.
 	hologram.anchored = 1//So space wind cannot drag it.
 	hologram.name = "[A.name] (Hologram)"//If someone decides to right click.
-	hologram.SetLuminosity(2)	//hologram lighting
-	SetLuminosity(2)			//pad lighting
+	hologram.set_light(2)	//hologram lighting
+	set_light(2)			//pad lighting
 	icon_state = "holopad1"
 	A.holo = src
 	master = A//AI is the master.
@@ -107,12 +137,13 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 	return 1
 
 /obj/machinery/hologram/holopad/proc/clear_holo()
-//	hologram.SetLuminosity(0)//Clear lighting.	//handled by the lighting controller when its ower is deleted
-	del(hologram)//Get rid of hologram.
+//	hologram.set_light(0)//Clear lighting.	//handled by the lighting controller when its ower is deleted
+	qdel(hologram)//Get rid of hologram.
+	hologram = null
 	if(master.holo == src)
 		master.holo = null
 	master = null//Null the master, since no-one is using it now.
-	SetLuminosity(0)			//pad lighting (hologram lighting will be handled automatically since its owner was deleted)
+	set_light(0)			//pad lighting (hologram lighting will be handled automatically since its owner was deleted)
 	icon_state = "holopad0"
 	use_power = 1//Passive power usage.
 	return 1
@@ -124,12 +155,12 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 				if((HOLOPAD_MODE == 0 && (get_dist(master.eyeobj, src) <= holo_range)))
 					return 1
 
-				else if (HOLOPAD_MODE == 1)
+				else if(HOLOPAD_MODE == 1)
 
 					var/area/holo_area = get_area(src)
 					var/area/eye_area = get_area(master.eyeobj)
 
-					if(eye_area in holo_area.master.related)
+					if(eye_area != holo_area)
 						return 1
 
 		clear_holo()//If not, we want to get rid of the hologram.
@@ -141,7 +172,7 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 		hologram.loc = get_turf(master.eyeobj)
 
 	return 1
-	
+
 // Simple helper to face what you clicked on, in case it should be needed in more than one place
 /obj/machinery/hologram/holopad/proc/face_atom(var/atom/A)
 	if( !hologram || !A || !hologram.x || !hologram.y || !A.x || !A.y ) return
@@ -176,27 +207,23 @@ For the other part of the code, check silicon say.dm. Particularly robot talk.*/
 /obj/machinery/hologram/ex_act(severity)
 	switch(severity)
 		if(1.0)
-			del(src)
+			qdel(src)
 		if(2.0)
-			if (prob(50))
-				del(src)
+			if(prob(50))
+				qdel(src)
 		if(3.0)
-			if (prob(5))
-				del(src)
+			if(prob(5))
+				qdel(src)
 	return
 
 /obj/machinery/hologram/blob_act()
-	del(src)
+	qdel(src)
 	return
 
-/obj/machinery/hologram/meteorhit()
-	del(src)
-	return
-
-/obj/machinery/hologram/Del()
+/obj/machinery/hologram/holopad/Destroy()
 	if(hologram)
-		src:clear_holo()
-	..()
+		clear_holo()
+	return ..()
 
 /*
 Holographic project of everything else.
@@ -215,7 +242,7 @@ Holographic project of everything else.
 		flat_icon.AddAlphaMask(alpha_mask)//Finally, let's mix in a distortion effect.
 		hologram.icon = flat_icon
 
-		world << "Your icon should appear now."
+		to_chat(world, "Your icon should appear now.")
 	return
 */
 

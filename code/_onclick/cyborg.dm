@@ -7,13 +7,14 @@
 */
 
 /mob/living/silicon/robot/ClickOn(var/atom/A, var/params)
+	if(client.click_intercept)
+		client.click_intercept.InterceptClickOn(src, params, A)
+		return
+
 	if(world.time <= next_click)
 		return
 	next_click = world.time + 1
 
-	if(client.buildmode) // comes after object.Click to allow buildmode gui objects to be clicked
-		build_click(src, client.buildmode, params, A)
-		return
 
 	var/list/modifiers = params2list(params)
 	if(modifiers["shift"] && modifiers["ctrl"])
@@ -21,6 +22,9 @@
 		return
 	if(modifiers["shift"] && modifiers["alt"])
 		AltShiftClickOn(A)
+		return
+	if(modifiers["middle"] && modifiers["ctrl"])
+		CtrlMiddleClickOn(A)
 		return
 	if(modifiers["middle"])
 		MiddleClickOn(A)
@@ -35,7 +39,7 @@
 		CtrlClickOn(A)
 		return
 
-	if(stat || lockcharge || weakened || stunned || paralysis)
+	if(incapacitated())
 		return
 
 	if(next_move >= world.time)
@@ -49,9 +53,9 @@
 			if(is_component_functioning("camera"))
 				aiCamera.captureimage(A, usr)
 			else
-				src << "<span class='userdanger'>Your camera isn't functional.</span>"
-			return	
-	
+				to_chat(src, "<span class='userdanger'>Your camera isn't functional.</span>")
+			return
+
 	/*
 	cyborg restrained() currently does nothing
 	if(restrained())
@@ -72,21 +76,13 @@
 		return
 
 	if(W == A)
-		next_move = world.time + 8
-		if(W.flags&USEDELAY)
-			next_move += 5
-
 		W.attack_self(src)
 		return
 
 	// cyborgs are prohibited from using storage items so we can I think safely remove (A.loc in contents)
 	if(A == loc || (A in loc) || (A in contents))
 		// No adjacency checks
-		next_move = world.time + 8
-		if(W.flags&USEDELAY)
-			next_move += 5
-
-		var/resolved = A.attackby(W,src)
+		var/resolved = A.attackby(W,src,params, params)
 		if(!resolved && A && W)
 			W.afterattack(A,src,1,params)
 		return
@@ -97,23 +93,26 @@
 	// cyborgs are prohibited from using storage items so we can I think safely remove (A.loc && isturf(A.loc.loc))
 	if(isturf(A) || isturf(A.loc))
 		if(A.Adjacent(src)) // see adjacent.dm
-			next_move = world.time + 10
-			if(W.flags&USEDELAY)
-				next_move += 5
-
-			var/resolved = A.attackby(W, src)
+			var/resolved = A.attackby(W, src, params, params)
 			if(!resolved && A && W)
 				W.afterattack(A, src, 1, params)
 			return
 		else
-			next_move = world.time + 10
 			W.afterattack(A, src, 0, params)
 			return
 	return
 
-//Middle click cycles through selected modules.
-/mob/living/silicon/robot/MiddleClickOn(var/atom/A)
+//Ctrl+Middle click cycles through modules
+/mob/living/silicon/robot/proc/CtrlMiddleClickOn(var/atom/A)
 	cycle_modules()
+	return
+
+//Middle click points
+/mob/living/silicon/robot/MiddleClickOn(var/atom/A)
+	if(istype(src, /mob/living/silicon/robot/drone))
+		// Drones cannot point.
+		return
+	pointed(A)
 	return
 
 //Give cyborgs hotkey clicks without breaking existing uses of hotkey clicks
@@ -131,19 +130,20 @@
 
 /atom/proc/BorgCtrlShiftClick(var/mob/user) // Examines
 	if(user.client && user.client.eye == user)
-		examine()
-		user.face_atom(src)
+		user.examinate(src)
 	return
 
 /atom/proc/BorgAltShiftClick()
-	return	
-	
+	return
+
 /obj/machinery/door/airlock/BorgAltShiftClick()  // Enables emergency override on doors! Forwards to AI code.
 	AIAltShiftClick()
-	
-/atom/proc/BorgShiftClick()
-	return		
-	
+
+/atom/proc/BorgShiftClick(var/mob/user)
+	if(user.client && user.client.eye == user)
+		user.examinate(src)
+	return
+
 /obj/machinery/door/airlock/BorgShiftClick()  // Opens and closes doors! Forwards to AI code.
 	AIShiftClick()
 
@@ -167,8 +167,8 @@
 	AIAltClick()
 
 /obj/machinery/turretid/BorgAltClick() //turret lethal on/off. Forwards to AI code.
-	AIAltClick()	
-	
+	AIAltClick()
+
 /*
 	As with AI, these are not used in click code,
 	because the code for robots is specific, not generic.

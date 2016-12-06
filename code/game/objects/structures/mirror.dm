@@ -7,52 +7,19 @@
 	density = 0
 	anchored = 1
 	var/shattered = 0
-
+	var/list/ui_users = list()
 
 /obj/structure/mirror/attack_hand(mob/user as mob)
 	if(shattered)	return
 
 	if(ishuman(user))
-		var/mob/living/carbon/human/H = user
-
-		var/userloc = H.loc
-
-		//see code/modules/mob/new_player/preferences.dm at approx line 545 for comments!
-		//this is largely copypasted from there.
-
-		//handle facial hair (if necessary)
-		if(H.gender == MALE)
-			var/list/species_facial_hair = list()
-			if(H.species)
-				for(var/i in facial_hair_styles_list)
-					var/datum/sprite_accessory/facial_hair/tmp_facial = facial_hair_styles_list[i]
-					if(H.species.name in tmp_facial.species_allowed)
-						species_facial_hair += i
-			else
-				species_facial_hair = facial_hair_styles_list
-
-			var/new_style = input(user, "Select a facial hair style", "Grooming")  as null|anything in species_facial_hair
-			if(userloc != H.loc) return	//no tele-grooming
-			if(new_style)
-				H.f_style = new_style
-
-		//handle normal hair
-		var/list/species_hair = list()
-		if(H.species)
-			for(var/i in hair_styles_list)
-				var/datum/sprite_accessory/hair/tmp_hair = hair_styles_list[i]
-				if(H.species.name in tmp_hair.species_allowed)
-					species_hair += i
-		else
-			species_hair = hair_styles_list
-
-		var/new_style = input(user, "Select a hair style", "Grooming")  as null|anything in species_hair
-		if(userloc != H.loc) return	//no tele-grooming
-		if(new_style)
-			H.h_style = new_style
-
-		H.update_hair()
-
+		var/datum/nano_module/appearance_changer/AC = ui_users[user]
+		if(!AC)
+			AC = new(src, user)
+			AC.name = "SalonPro Nano-Mirror&trade;"
+			AC.flags = APPEARANCE_ALL_BODY
+			ui_users[user] = AC
+		AC.ui_interact(user)
 
 /obj/structure/mirror/proc/shatter()
 	if(shattered)	return
@@ -71,7 +38,8 @@
 	..()
 
 
-/obj/structure/mirror/attackby(obj/item/I as obj, mob/user as mob)
+/obj/structure/mirror/attackby(obj/item/I as obj, mob/living/user as mob, params)
+	user.do_attack_animation(src)
 	if(shattered)
 		playsound(src.loc, 'sound/effects/hit_on_shattered_glass.ogg', 70, 1)
 		return
@@ -84,8 +52,9 @@
 		playsound(src.loc, 'sound/effects/Glasshit.ogg', 70, 1)
 
 
-/obj/structure/mirror/attack_alien(mob/user as mob)
+/obj/structure/mirror/attack_alien(mob/living/user as mob)
 	if(islarva(user)) return
+	user.do_attack_animation(src)
 	if(shattered)
 		playsound(src.loc, 'sound/effects/hit_on_shattered_glass.ogg', 70, 1)
 		return
@@ -93,10 +62,11 @@
 	shatter()
 
 
-/obj/structure/mirror/attack_animal(mob/user as mob)
+/obj/structure/mirror/attack_animal(mob/living/user as mob)
 	if(!isanimal(user)) return
 	var/mob/living/simple_animal/M = user
 	if(M.melee_damage_upper <= 0) return
+	M.do_attack_animation(src)
 	if(shattered)
 		playsound(src.loc, 'sound/effects/hit_on_shattered_glass.ogg', 70, 1)
 		return
@@ -104,10 +74,11 @@
 	shatter()
 
 
-/obj/structure/mirror/attack_slime(mob/user as mob)
+/obj/structure/mirror/attack_slime(mob/living/user as mob)
 	var/mob/living/carbon/slime/S = user
-	if (!S.is_adult)
+	if(!S.is_adult)
 		return
+	user.do_attack_animation(src)
 	if(shattered)
 		playsound(src.loc, 'sound/effects/hit_on_shattered_glass.ogg', 70, 1)
 		return

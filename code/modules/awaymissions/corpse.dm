@@ -7,6 +7,7 @@
 /obj/effect/landmark/corpse
 	name = "Unknown"
 	var/mobname = "Unknown"  //Unused now but it'd fuck up maps to remove it now
+	var/mob_species = null //Set to make a mob of another race, currently used only in ruins
 	var/corpseuniform = null //Set this to an object path to have the slot filled with said object on the corpse.
 	var/corpsesuit = null
 	var/corpseshoes = null
@@ -23,7 +24,6 @@
 	var/corpseidjob = null // Needs to be in quotes, such as "Clown" or "Chef." This just determines what the ID reads as, not their access
 	var/corpseidaccess = null //This is for access. See access.dm for which jobs give what access. Again, put in quotes. Use "Captain" if you want it to be all access.
 	var/corpseidicon = null //For setting it to be a gold, silver, centcomm etc ID
-	var/mutantrace = "human"
 	var/timeofdeath = null
 	var/coffin = 0
 
@@ -35,10 +35,11 @@
 
 /obj/effect/landmark/corpse/proc/createCorpse() //Creates a mob and checks for gear in each slot before attempting to equip it.
 	var/mob/living/carbon/human/human/M = new /mob/living/carbon/human/human (src.loc)
-	M.dna.mutantrace = mutantrace
 	M.real_name = src.name
 	M.death(1) //Kills the new mob
 	M.timeofdeath = timeofdeath
+	if(src.mob_species)
+		M.set_species(src.mob_species)
 	if(src.corpseuniform)
 		M.equip_to_slot_or_del(new src.corpseuniform(M), slot_w_uniform)
 	if(src.corpsesuit)
@@ -86,7 +87,7 @@
 	if(src.coffin == 1)
 		var/obj/structure/closet/coffin/sarcophagus/sarc = locate(/obj/structure/closet/coffin/sarcophagus) in loc
 		if(sarc) M.loc = sarc
-	del(src)
+	qdel(src)
 
 
 
@@ -100,8 +101,8 @@
 	name = "Syndicate Operative"
 	corpseuniform = /obj/item/clothing/under/syndicate
 	corpsesuit = /obj/item/clothing/suit/armor/vest
-	corpseshoes = /obj/item/clothing/shoes/swat
-	corpsegloves = /obj/item/clothing/gloves/swat
+	corpseshoes = /obj/item/clothing/shoes/combat
+	corpsegloves = /obj/item/clothing/gloves/combat
 	corpseradio = /obj/item/device/radio/headset
 	corpsemask = /obj/item/clothing/mask/gas
 	corpsehelmet = /obj/item/clothing/head/helmet/swat
@@ -116,8 +117,8 @@
 	name = "Syndicate Commando"
 	corpseuniform = /obj/item/clothing/under/syndicate
 	corpsesuit = /obj/item/clothing/suit/space/rig/syndi
-	corpseshoes = /obj/item/clothing/shoes/swat
-	corpsegloves = /obj/item/clothing/gloves/swat
+	corpseshoes = /obj/item/clothing/shoes/combat
+	corpsegloves = /obj/item/clothing/gloves/combat
 	corpseradio = /obj/item/device/radio/headset
 	corpsemask = /obj/item/clothing/mask/gas/syndicate
 	corpsehelmet = /obj/item/clothing/head/helmet/space/rig/syndi
@@ -161,9 +162,9 @@
 	corpseradio = /obj/item/device/radio/headset/headset_eng
 	corpseuniform = /obj/item/clothing/under/rank/engineer
 	corpseback = /obj/item/weapon/storage/backpack/industrial
-	corpseshoes = /obj/item/clothing/shoes/orange
+	corpseshoes = /obj/item/clothing/shoes/workboots
 	corpsebelt = /obj/item/weapon/storage/belt/utility/full
-	corpsegloves = /obj/item/clothing/gloves/yellow
+	corpsegloves = /obj/item/clothing/gloves/color/yellow
 	corpsehelmet = /obj/item/clothing/head/hardhat
 	corpseid = 1
 	corpseidjob = "Station Engineer"
@@ -247,7 +248,7 @@
 /obj/effect/landmark/corpse/miner
 	corpseradio = /obj/item/device/radio/headset/headset_cargo
 	corpseuniform = /obj/item/clothing/under/rank/miner
-	corpsegloves = /obj/item/clothing/gloves/black
+	corpsegloves = /obj/item/clothing/gloves/fingerless
 	corpseback = /obj/item/weapon/storage/backpack/industrial
 	corpseshoes = /obj/item/clothing/shoes/black
 	corpseid = 1
@@ -281,9 +282,16 @@
 	corpseglasses = /obj/item/clothing/glasses/eyepatch
 	corpsemask = /obj/item/clothing/mask/cigarette/cigar/cohiba
 	corpsehelmet = /obj/item/clothing/head/centhat
-	corpsegloves = /obj/item/clothing/gloves/swat
-	corpseshoes = /obj/item/clothing/shoes/swat
+	corpsegloves = /obj/item/clothing/gloves/combat
+	corpseshoes = /obj/item/clothing/shoes/combat
 	corpsepocket1 = /obj/item/weapon/lighter/zippo
 	corpseid = 1
 	corpseidjob = "Commander"
 	corpseidaccess = "Captain"
+
+/obj/effect/landmark/corpse/abductor //Connected to ruins, for some reason?
+	name = "abductor"
+	mobname = "???"
+	mob_species = "abductor"
+	corpseuniform = /obj/item/clothing/under/color/grey
+	corpseshoes = /obj/item/clothing/shoes/combat
