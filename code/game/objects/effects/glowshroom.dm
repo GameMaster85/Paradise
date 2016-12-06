@@ -45,13 +45,13 @@
 	processing_objects += src
 
 
-	SetLuminosity(round(potency/10))
+	set_light(round(potency/10))
 	lastTick = world.timeofday
 
 
 /obj/effect/glowshroom/Destroy()
 	processing_objects -= src
-	..()
+	return ..()
 
 /obj/effect/glowshroom/process()
 	if(!spreaded)
@@ -133,7 +133,7 @@
 	floor = 1
 	return 1
 
-/obj/effect/glowshroom/attackby(obj/item/weapon/W as obj, mob/user as mob)
+/obj/effect/glowshroom/attackby(obj/item/weapon/W as obj, mob/user as mob, params)
 	..()
 
 	endurance -= W.force
@@ -146,21 +146,21 @@
 			qdel(src)
 			return
 		if(2.0)
-			if (prob(50))
+			if(prob(50))
 				qdel(src)
 				return
 		if(3.0)
-			if (prob(5))
+			if(prob(5))
 				qdel(src)
 				return
 		else
 	return
 
-/obj/effect/glowshroom/fire_act(datum/gas_mixture/air, exposed_temperature, exposed_volume)
+/obj/effect/glowshroom/temperature_expose(datum/gas_mixture/air, exposed_temperature, exposed_volume)
 	if(exposed_temperature > 300)
 		endurance -= 5
 		CheckEndurance()
 
 /obj/effect/glowshroom/proc/CheckEndurance()
 	if(endurance <= 0)
-		del(src)
+		qdel(src)

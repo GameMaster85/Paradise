@@ -1,77 +1,14 @@
 /obj/item/flag
 	icon = 'icons/obj/flag.dmi'
-	w_class = 4.0
-	var/lit = 0
-	var/burntime = 30
+	w_class = 4
+	burntime = 20
+	burn_state = FLAMMABLE
 
-/obj/item/flag/fire_act(null, temperature, volume)
-	if(!lit)
-		Ignite()
-		return
-
-/obj/item/flag/proc/Ignite()
-	if(lit) return
-	lit = 1
-	update_icons()
-	processing_objects.Add(src)
-
-/obj/item/flag/process()
-	burntime--
-	if(burntime < 1)
-		processing_objects.Remove(src)
-		if(istype(src.loc,/turf))
-			new /obj/effect/decal/cleanable/ash(src.loc)
-			new /obj/item/stack/rods(src.loc)
-			del(src)
-			return
-		if(istype(src.loc,/mob/living/carbon))
-			var/mob/living/carbon/C = src.loc
-			var/turf/location = get_turf(C)
-			new /obj/effect/decal/cleanable/ash(location)
-			new /obj/item/stack/rods(location)
-			del(src)
-			return
-		else
-			del(src)
-			return
-
-/obj/item/flag/attackby(obj/item/weapon/W as obj, mob/user as mob)
+/obj/item/flag/attackby(obj/item/weapon/W, mob/user, params)
 	..()
-	if(istype(W, /obj/item/weapon/weldingtool))
-		var/obj/item/weapon/weldingtool/WT = W
-		if(WT.isOn())//Badasses dont get blinded while lighting their cig with a welding tool
-			light("<span class='notice'>[user] casually lights the [name] with [W], what a badass.</span>")
-
-	else if(istype(W, /obj/item/weapon/lighter/zippo))
-		var/obj/item/weapon/lighter/zippo/Z = W
-		if(Z.lit)
-			light("<span class='rose'>With a single flick of their wrist, [user] smoothly lights the [name] with their [W]. Damn they're cool.</span>")
-
-	else if(istype(W, /obj/item/weapon/lighter))
-		var/obj/item/weapon/lighter/L = W
-		if(L.lit)
-			light("<span class='notice'>After some fiddling, [user] manages to light the [name] with [W].</span>")
-
-	else if(istype(W, /obj/item/weapon/match))
-		var/obj/item/weapon/match/M = W
-		if(M.lit)
-			light("<span class='notice'>[user] lights the [name] with their [W].</span>")
-
-	else if(istype(W, /obj/item/weapon/melee/energy/sword))
-		var/obj/item/weapon/melee/energy/sword/S = W
-		if(S.active)
-			light("<span class='warning'>[user] swings their [W], barely missing their nose. They light the [name] in the process.</span>")
-
-	else if(istype(W, /obj/item/device/assembly/igniter))
-		light("<span class='notice'>[user] fiddles with [W], and manages to light the [name].</span>")
-
-/obj/item/flag/proc/light(var/flavor_text = "[usr] lights the [name].")
-	if(!src.lit)
-		src.lit = 1
-		var/turf/T = get_turf(src)
-		T.visible_message(flavor_text)
-		update_icons()
-		processing_objects.Add(src)
+	if(is_hot(W) && burn_state != ON_FIRE)
+		user.visible_message("<span class='notice'>[user] lights the [name] with [W].</span>")
+		fire_act()
 
 /obj/item/flag/proc/update_icons()
 	overlays = null
@@ -95,7 +32,7 @@
 
 /obj/item/flag/pony
 	name = "Equestria flag"
-	desc = "The flag of the independant, sovereign nation of Equestria, whatever the fuck that is."
+	desc = "The flag of the independent, sovereign nation of Equestria, whatever the fuck that is."
 	icon_state = "ponyflag"
 
 /obj/item/flag/ian
@@ -128,7 +65,7 @@
 
 /obj/item/flag/species/diona
 	name = "Diona flag"
-	desc = "A flag proudly proclaiming the superior heritage of Diona."
+	desc = "A flag proudly proclaiming the superior heritage of Dionae."
 	icon_state = "dionaflag"
 
 /obj/item/flag/species/human
@@ -156,36 +93,46 @@
 	desc = "A flag proudly proclaiming the superior heritage of Unathi."
 	icon_state = "unathiflag"
 
-//Nation Flags (Able to spawn outside Nations gamemode)
+/obj/item/flag/species/vulp
+	name = "Vulpkanin flag"
+	desc = "A flag proudly proclaiming the superior heritage of Vulpkanin."
+	icon_state = "vulpflag"
+
+/obj/item/flag/species/drask
+	name = "Drask flag"
+	desc = "A flag proudly proclaiming the superior heritage of Drask."
+	icon_state = "draskflag"
+
+//Department Flags
 
 /obj/item/flag/cargo
 	name = "Cargonia flag"
-	desc = "The flag of the independant, sovereign nation of Cargonia."
+	desc = "The flag of the independent, sovereign nation of Cargonia."
 	icon_state = "cargoflag"
 
 /obj/item/flag/med
 	name = "Medistan flag"
-	desc = "The flag of the independant, sovereign nation of Medistan."
+	desc = "The flag of the independent, sovereign nation of Medistan."
 	icon_state = "medflag"
 
 /obj/item/flag/sec
 	name = "Brigston flag"
-	desc = "The flag of the independant, sovereign nation of Brigston."
+	desc = "The flag of the independent, sovereign nation of Brigston."
 	icon_state = "secflag"
 
 /obj/item/flag/rnd
 	name = "Scientopia flag"
-	desc = "The flag of the independant, sovereign nation of Scientopia."
+	desc = "The flag of the independent, sovereign nation of Scientopia."
 	icon_state = "rndflag"
 
 /obj/item/flag/atmos
 	name = "Atmosia flag"
-	desc = "The flag of the independant, sovereign nation of Atmosia."
+	desc = "The flag of the independent, sovereign nation of Atmosia."
 	icon_state = "atmosflag"
 
 /obj/item/flag/command
-	name = "Command flag"
-	desc = "The flag of the independant, sovereign nation of Command."
+	name = "Commandzikstan flag"
+	desc = "The flag of the independent, sovereign nation of Commandzikstan."
 	icon_state = "ntflag"
 
 //Antags
@@ -200,11 +147,6 @@
 	desc = "A flag proudly boasting the logo of the Syndicate, in defiance of NT."
 	icon_state = "syndiflag"
 
-/obj/item/flag/ninja
-	name = "Spider Clan flag"
-	desc = "A flag proudly boasting the logo of the Spider Clan, in defiance of NT."
-	icon_state = "ninjaflag"
-
 /obj/item/flag/wiz
 	name = "Wizard Federation flag"
 	desc = "A flag proudly boasting the logo of the Wizard Federation, sworn enemies of NT."
@@ -214,3 +156,41 @@
 	name = "Nar'Sie Cultist flag"
 	desc = "A flag proudly boasting the logo of the cultists, sworn enemies of NT."
 	icon_state = "cultflag"
+	
+//Chameleon
+
+/obj/item/flag/chameleon
+	name = "Chameleon flag"
+	desc = "A poor recreation of the official NT flag. It seems to shimmer a little."
+	icon_state = "ntflag"
+	origin_tech = "materials=3;magnets=4;syndicate=4"
+	var/used = 0
+	
+/obj/item/flag/chameleon/attack_self(mob/user)
+	if(used)
+		return
+
+	var/list/flag_types = typesof(/obj/item/flag) - list(src.type, /obj/item/flag)
+	var/list/flag = list()
+
+	for(var/flag_type in flag_types)
+		var/obj/item/flag/F = new flag_type
+		flag[capitalize(F.name)] = F
+
+	var/list/show_flag = list("EXIT" = null) + sortList(flag)
+
+	var/input_flag = input(user, "Choose a flag to disguise as.", "Choose a flag.") in show_flag
+
+	if(user && src in user.contents)
+
+		var/obj/item/flag/chosen_flag = flag[input_flag]
+
+		if(chosen_flag)
+			name = chosen_flag.name
+			icon_state = chosen_flag.icon_state
+			desc = chosen_flag.desc
+			used = 1
+			
+/obj/item/flag/chameleon/burn()
+	explosion(loc,1,2,4,4, flame_range = 4)
+	qdel(src)

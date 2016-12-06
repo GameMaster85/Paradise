@@ -13,13 +13,13 @@
 
 	var/datum/nanoui/ui = locate(uiref)
 
-	if (istype(ui))
+	if(istype(ui))
 		ui.close()
 
 		if(ui.ref)
 			var/href = "close=1"
 			src.Topic(href, params2list(href), ui.ref)	// this will direct to the atom's Topic() proc via client.Topic()
-		else if (ui.on_close_logic)
+		else if(ui.on_close_logic)
 			// no atomref specified (or not found)
 			// so just reset the user mob's machine var
 			if(src && src.mob)
@@ -31,18 +31,13 @@
   * ui_interact is currently defined for /atom/movable
   *
   * @param user /mob The mob who is interacting with this ui
-<<<<<<< HEAD
   * @param ui_key string A string key to use for this ui. Allows for multiple unique uis on one obj/mob (defaut value "main")
   * @param ui /datum/nanoui This parameter is passed by the nanoui process() proc when updating an open ui
-=======
-  * @param ui_key string A string key to use for this ui. Allows for multiple unique uis on one obj/mob (defaut value "main")  
-  * @param ui /datum/nanoui This parameter is passed by the nanoui process() proc when updating an open ui 
   * @param force_open boolean Force the UI to (re)open, even if it's already open
->>>>>>> 7e7e6cd... Continued work in progress on a major revision of the NanoUI templating system.
   *
   * @return nothing
   */
-/atom/movable/proc/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1)
+/datum/proc/ui_interact(mob/user, ui_key = "main", var/datum/nanoui/ui = null, var/force_open = 1, var/datum/nano_ui/master_ui = null, var/datum/topic_state/state = default_state)
 	return
 
 // Used by the Nano UI Manager (/datum/nanomanager) to track UIs opened by this mob

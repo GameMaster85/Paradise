@@ -8,7 +8,12 @@
 	..()
 	layer = 3.1
 
-/obj/machinery/door/poddoor/shutters/attackby(obj/item/weapon/C as obj, mob/user as mob)
+/obj/machinery/door/poddoor/shutters/preopen
+	icon_state = "shutter0"
+	density = 0
+	opacity = 0
+
+/obj/machinery/door/poddoor/shutters/attackby(obj/item/weapon/C as obj, mob/user as mob, params)
 	add_fingerprint(user)
 	if(!(istype(C, /obj/item/weapon/crowbar) || (istype(C, /obj/item/weapon/twohanded/fireaxe) && C:wielded == 1) ))
 		return
@@ -19,7 +24,7 @@
 			icon_state = "shutter0"
 			sleep(15)
 			density = 0
-			SetOpacity(0)
+			set_opacity(0)
 			operating = 0
 			return
 	return
@@ -35,8 +40,9 @@
 	icon_state = "shutter0"
 	sleep(10)
 	density = 0
-	SetOpacity(0)
-	update_nearby_tiles()
+	set_opacity(0)
+	air_update_turf(1)
+	update_freelook_sight()
 
 	if(operating == 1) //emag again
 		operating = 0
@@ -53,8 +59,9 @@
 	icon_state = "shutter1"
 	density = 1
 	if(visible)
-		SetOpacity(1)
-	update_nearby_tiles()
+		set_opacity(1)
+	air_update_turf(1)
+	update_freelook_sight()
 
 	sleep(10)
 	operating = 0

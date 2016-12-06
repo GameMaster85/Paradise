@@ -11,7 +11,7 @@ var/const/ENGINEER			=(1<<6)
 var/const/ATMOSTECH			=(1<<7)
 var/const/AI				=(1<<8)
 var/const/CYBORG			=(1<<9)
-
+var/const/CENTCOM			=(1<<10)
 
 var/const/MEDSCI			=(1<<1)
 
@@ -24,8 +24,7 @@ var/const/GENETICIST		=(1<<5)
 var/const/VIROLOGIST		=(1<<6)
 var/const/PSYCHIATRIST		=(1<<7)
 var/const/ROBOTICIST		=(1<<8)
-var/const/XENOBIOLOGIST		=(1<<9)
-var/const/PARAMEDIC			=(1<<10)
+var/const/PARAMEDIC			=(1<<9)
 
 
 var/const/SUPPORT			=(1<<2)
@@ -50,13 +49,11 @@ var/const/KARMA				=(1<<3)
 
 var/const/NANO				=(1<<0)
 var/const/BLUESHIELD		=(1<<1)
-var/const/CUSTOMS			=(1<<2)
 var/const/BARBER			=(1<<3)
 var/const/MECHANIC			=(1<<4)
 var/const/BRIGDOC			=(1<<5)
 var/const/JUDGE				=(1<<6)
 var/const/PILOT				=(1<<7)
-var/const/NANOREC			=(1<<8)
 
 var/list/assistant_occupations = list(
 )
@@ -96,7 +93,6 @@ var/list/science_positions = list(
 	"Scientist",
 	"Geneticist",	//Part of both medical and science
 	"Roboticist",
-	"Xenobiologist"
 )
 
 //BS12 EDIT
@@ -116,8 +112,18 @@ var/list/support_positions = list(
 	"Mime",
 	"Barber",
 	"Magistrate",
-	"Nanotrasen Recruiter"
+	"Nanotrasen Representative",
+	"Blueshield"
 )
+
+var/list/supply_positions = list(
+	"Head of Personnel",
+	"Quartermaster",
+	"Cargo Technician",
+	"Shaft Miner"
+)
+
+var/list/service_positions = support_positions - supply_positions + list("Head of Personnel")
 
 
 var/list/security_positions = list(
@@ -125,8 +131,6 @@ var/list/security_positions = list(
 	"Warden",
 	"Detective",
 	"Security Officer",
-	"Customs Officer",
-	"Blueshield",
 	"Brig Physician",
 	"Security Pod Pilot"
 )
@@ -139,19 +143,18 @@ var/list/civilian_positions = list(
 var/list/nonhuman_positions = list(
 	"AI",
 	"Cyborg",
+	"Drone",
 	"pAI"
 )
 
 var/list/whitelisted_positions = list(
 	"Blueshield",
-	"Customs Officer",
 	"Nanotrasen Representative",
 	"Barber",
 	"Mechanic",
 	"Brig Physician",
 	"Magistrate",
 	"Security Pod Pilot",
-	"Nanotrasen Recruiter"
 )
 
 

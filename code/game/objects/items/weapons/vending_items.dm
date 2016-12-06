@@ -10,7 +10,7 @@
 	throwforce = 10.0
 	throw_speed = 1
 	throw_range = 7
-	w_class = 4.0
+	w_class = 4
 
 	var/charges = 0		//how many restocking "charges" the refill has
 
@@ -21,11 +21,11 @@
 		charges = amt
 
 /obj/item/weapon/vending_refill/examine(mob/user)
-	..()
+	..(user)
 	if(charges)
-		user << "It can restock [charges] item(s)."
+		to_chat(user, "It can restock [charges] item(s).")
 	else
-		user << "It's empty!"
+		to_chat(user, "It's empty!")
 
 //NOTE I decided to go for about 1/3 of a machine's capacity
 
@@ -57,7 +57,7 @@
 	machine_name = "AutoDrobe"
 	icon_state = "refill_costume"
 	charges = 19// of 58
-	
+
 /obj/item/weapon/vending_refill/hatdispenser
 	machine_name = "hat"
 	icon_state = "refill_costume"
@@ -67,8 +67,18 @@
 	machine_name = "suit"
 	icon_state = "refill_costume"
 	charges = 68// of 206
-	
+
 /obj/item/weapon/vending_refill/shoedispenser
 	machine_name = "shoe"
 	icon_state = "refill_costume"
 	charges = 30// of 91
+
+/obj/item/weapon/vending_refill/clothing
+	machine_name = "ClothesMate"
+	icon_state = "refill_clothes"
+	charges = 20// of 62
+
+/obj/item/weapon/vending_refill/crittercare
+	machine_name = "CritterCare"
+	icon_state = "refill_pet"
+	charges = 31// of 94

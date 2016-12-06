@@ -3,10 +3,9 @@
 	desc = "A small electronic device that should never exist."
 	icon = 'icons/obj/assemblies/new_assemblies.dmi'
 	icon_state = ""
-	flags = FPRINT | CONDUCT
-	w_class = 2.0
-	m_amt = 100
-	g_amt = 0
+	flags = CONDUCT
+	w_class = 2
+	materials = list(MAT_METAL=100)
 	throwforce = 2
 	throw_speed = 3
 	throw_range = 10
@@ -70,6 +69,7 @@
 			else if(A.a_right == src)
 				A.a_right = null
 			src.holder = null
+		return ..()
 
 	pulsed(var/radio = 0)
 		if(holder && (wires & WIRE_RECEIVE))
@@ -114,12 +114,12 @@
 	attach_assembly(var/obj/item/device/assembly/A, var/mob/user)
 		holder = new/obj/item/device/assembly_holder(get_turf(src))
 		if(holder.attach(A,src,user))
-			user << "\blue You attach \the [A] to \the [src]!"
+			to_chat(user, "\blue You attach \the [A] to \the [src]!")
 			return 1
 		return 0
 
 
-	attackby(obj/item/weapon/W as obj, mob/user as mob)
+	attackby(obj/item/weapon/W as obj, mob/user as mob, params)
 		if(isassembly(W))
 			var/obj/item/device/assembly/A = W
 			if((!A.secured) && (!secured))
@@ -127,9 +127,9 @@
 				return
 		if(istype(W, /obj/item/weapon/screwdriver))
 			if(toggle_secure())
-				user << "\blue \The [src] is ready!"
+				to_chat(user, "\blue \The [src] is ready!")
 			else
-				user << "\blue \The [src] can now be attached!"
+				to_chat(user, "\blue \The [src] can now be attached!")
 			return
 		..()
 		return
@@ -140,15 +140,13 @@
 		return
 
 
-	examine()
-		set src in view()
-		..()
-		if((in_range(src, usr) || loc == usr))
+	examine(mob/user)
+		..(user)
+		if((in_range(src, user) || loc == user))
 			if(secured)
-				usr << "\The [src] is ready!"
+				to_chat(user, "\The [src] is ready!")
 			else
-				usr << "\The [src] can be attached!"
-		return
+				to_chat(user, "\The [src] can be attached!")
 
 
 	attack_self(mob/user as mob)

@@ -1,13 +1,15 @@
 //base type for controllers of two-door systems
 /obj/machinery/embedded_controller/radio/airlock
 	// Setup parameters only
+	radio_filter = RADIO_AIRLOCK
 	var/tag_exterior_door
 	var/tag_interior_door
 	var/tag_airpump
 	var/tag_chamber_sensor
 	var/tag_exterior_sensor
 	var/tag_interior_sensor
-	var/tag_mech_sensor
+	var/tag_airlock_mech_sensor
+	var/tag_shuttle_mech_sensor
 	var/tag_secure = 0
 
 /obj/machinery/embedded_controller/radio/airlock/initialize()
@@ -32,7 +34,7 @@
 
 	ui = nanomanager.try_update_ui(user, src, ui_key, ui, data, force_open)
 
-	if (!ui)
+	if(!ui)
 		ui = new(user, src, ui_key, "advanced_airlock_console.tmpl", name, 470, 290)
 
 		ui.set_initial_data(data)
@@ -43,7 +45,7 @@
 
 /obj/machinery/embedded_controller/radio/airlock/advanced_airlock_controller/Topic(href, href_list)
 	if(..())
-		return
+		return 1
 
 	usr.set_machine(src)
 	src.add_fingerprint(usr)
@@ -88,7 +90,7 @@
 
 	ui = nanomanager.try_update_ui(user, src, ui_key, ui, data, force_open)
 
-	if (!ui)
+	if(!ui)
 		ui = new(user, src, ui_key, "simple_airlock_console.tmpl", name, 470, 290)
 
 		ui.set_initial_data(data)
@@ -152,7 +154,7 @@
 
 	ui = nanomanager.try_update_ui(user, src, ui_key, ui, data, force_open)
 
-	if (!ui)
+	if(!ui)
 		ui = new(user, src, ui_key, "door_access_console.tmpl", name, 330, 220)
 
 		ui.set_initial_data(data)

@@ -5,6 +5,7 @@
  *		Head of Security
  */
 
+
 /*
  * Security
  */
@@ -13,50 +14,64 @@
 	name = "warden's jumpsuit"
 	icon_state = "warden"
 	item_state = "r_suit"
-	_color = "warden"
-	armor = list(melee = 10, bullet = 0, laser = 0,energy = 0, bomb = 0, bio = 0, rad = 0)
-	flags = FPRINT | TABLEPASS | ONESIZEFITSALL
-	siemens_coefficient = 0.9
+	item_color = "warden"
+	armor = list(melee = 10, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 0, rad = 0)
+	flags_size = ONESIZEFITSALL
+	strip_delay = 50
+
+/obj/item/clothing/under/rank/warden/skirt
+	desc = "Standard feminine fashion for a Warden. It is made of sturdier material than standard jumpskirts. It has the word \"Warden\" written on the shoulders."
+	name = "warden's jumpskirt"
+	icon_state = "wardenf"
+	item_state = "r_suit"
+	item_color = "wardenf"
+	flags_size = null
 
 /obj/item/clothing/under/rank/security
 	name = "security officer's jumpsuit"
 	desc = "It's made of a slightly sturdier material than standard jumpsuits, to allow for robust protection."
 	icon_state = "security"
 	item_state = "r_suit"
-	_color = "secred"
-	armor = list(melee = 10, bullet = 0, laser = 0,energy = 0, bomb = 0, bio = 0, rad = 0)
-	flags = FPRINT | TABLEPASS | ONESIZEFITSALL
-	siemens_coefficient = 0.9
+	item_color = "secred"
+	armor = list(melee = 10, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 0, rad = 0)
+	flags_size = ONESIZEFITSALL
+	strip_delay = 50
+
+/obj/item/clothing/under/rank/security/skirt
+	name = "security officer's jumpskirt"
+	desc = "Standard feminine fashion for Security Officers.  It's made of sturdier material than the standard jumpskirts."
+	icon_state = "secredf"
+	item_state = "r_suit"
+	item_color = "secredf"
+	flags_size = null
 
 /obj/item/clothing/under/rank/dispatch
 	name = "dispatcher's uniform"
 	desc = "A dress shirt and khakis with a security patch sewn on."
 	icon_state = "dispatch"
 	item_state = "dispatch"
-	_color = "dispatch"
-	armor = list(melee = 10, bullet = 0, laser = 0,energy = 0, bomb = 0, bio = 0, rad = 0)
-	flags = FPRINT | TABLEPASS | ONESIZEFITSALL
-	siemens_coefficient = 0.9
+	item_color = "dispatch"
+	armor = list(melee = 10, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 0, rad = 0)
+	flags_size = ONESIZEFITSALL
 
 /obj/item/clothing/under/rank/security2
 	name = "security officer's uniform"
 	desc = "It's made of a slightly sturdier material, to allow for robust protection."
 	icon_state = "redshirt2"
 	item_state = "r_suit"
-	_color = "redshirt2"
-	armor = list(melee = 10, bullet = 0, laser = 0,energy = 0, bomb = 0, bio = 0, rad = 0)
-	flags = FPRINT | TABLEPASS | ONESIZEFITSALL
-	siemens_coefficient = 0.9
+	item_color = "redshirt2"
+	armor = list(melee = 10, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 0, rad = 0)
+	flags_size = ONESIZEFITSALL
 
 /obj/item/clothing/under/rank/security/corp
 	icon_state = "sec_corporate"
 	item_state = "sec_corporate"
-	_color = "sec_corporate"
+	item_color = "sec_corporate"
 
 /obj/item/clothing/under/rank/warden/corp
 	icon_state = "warden_corporate"
 	item_state = "warden_corporate"
-	_color = "warden_corporate"
+	item_color = "warden_corporate"
 
 /*
  * Detective
@@ -66,19 +81,14 @@
 	desc = "Someone who wears this means business."
 	icon_state = "detective"
 	item_state = "det"
-	_color = "detective"
-	armor = list(melee = 10, bullet = 0, laser = 0,energy = 0, bomb = 0, bio = 0, rad = 0)
-	flags = FPRINT | TABLEPASS | ONESIZEFITSALL
-	siemens_coefficient = 0.9
-
-
-/obj/item/clothing/head/det_hat
-	name = "hat"
-	desc = "Someone who wears this will look very smart."
-	icon_state = "detective"
-	allowed = list(/obj/item/weapon/reagent_containers/food/snacks/candy_corn, /obj/item/weapon/pen)
-	armor = list(melee = 50, bullet = 5, laser = 25,energy = 10, bomb = 0, bio = 0, rad = 0)
-	siemens_coefficient = 0.9
+	item_color = "detective"
+	armor = list(melee = 10, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 0, rad = 0)
+	flags_size = ONESIZEFITSALL
+	strip_delay = 50
+	species_fit = list("Vox")
+	sprite_sheets = list(
+		"Vox" = 'icons/mob/species/vox/uniform.dmi'
+		)
 
 /*
  * Head of Security
@@ -88,60 +98,23 @@
 	name = "head of security's jumpsuit"
 	icon_state = "hos"
 	item_state = "r_suit"
-	_color = "hosred"
-	armor = list(melee = 10, bullet = 0, laser = 0,energy = 0, bomb = 0, bio = 0, rad = 0)
-	flags = FPRINT | TABLEPASS | ONESIZEFITSALL
-	siemens_coefficient = 0.8
+	item_color = "hosred"
+	armor = list(melee = 10, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 0, rad = 0)
+	flags_size = ONESIZEFITSALL
+	strip_delay = 60
+
+/obj/item/clothing/under/rank/head_of_security/skirt
+	desc = "It's a fashionable jumpskirt worn by those few with the dedication to achieve the position of \"Head of Security\". It has additional armor to protect the wearer."
+	name = "head of security's jumpskirt"
+	icon_state = "hosredf"
+	item_state = "r_suit"
+	item_color = "hosredf"
+	flags_size = null
 
 /obj/item/clothing/under/rank/head_of_security/corp
 	icon_state = "hos_corporate"
 	item_state = "hos_corporate"
-	_color = "hos_corporate"
-
-/obj/item/clothing/head/helmet/HoS
-	name = "Head of Security Hat"
-	desc = "The hat of the Head of Security. For showing the officers who's in charge."
-	icon_state = "hoscap"
-	flags = FPRINT | TABLEPASS | HEADCOVERSEYES
-	armor = list(melee = 80, bullet = 60, laser = 50,energy = 10, bomb = 25, bio = 10, rad = 0)
-	flags_inv = 0
-	flags_inv = HIDEEARS
-	siemens_coefficient = 0.8
-
-/obj/item/clothing/suit/armor/hos
-	name = "armored coat"
-	desc = "A trench coat enhanced with a special alloy for some protection and style."
-	icon_state = "hos"
-	item_state = "hos"
-	body_parts_covered = UPPER_TORSO|LOWER_TORSO|ARMS|LEGS
-	armor = list(melee = 65, bullet = 30, laser = 50, energy = 10, bomb = 25, bio = 0, rad = 0)
-	flags_inv = HIDEJUMPSUIT
-	siemens_coefficient = 0.6
-
-	verb/toggle()
-		set name = "Toggle Trenchcoat Buttons"
-		set category = "Object"
-
-		if(!usr.canmove || usr.stat || usr.restrained())
-			return 0
-		if(icon_state == "hos")
-			icon_state = "jensencoat"
-			item_state = "jensencoat"
-			usr<< "You unbutton the [src]."
-		else
-			icon_state = "hos"
-			item_state = "hos"
-			usr<< "You button the [src]."
-
-		usr.update_inv_wear_suit()
-
-
-/obj/item/clothing/head/helmet/HoS/dermal
-	name = "Dermal Armour Patch"
-	desc = "You're not quite sure how you manage to take it on and off, but it implants nicely in your head."
-	icon_state = "dermal"
-	item_state = "dermal"
-	siemens_coefficient = 0.6
+	item_color = "hos_corporate"
 
 //Jensen cosplay gear
 /obj/item/clothing/under/rank/head_of_security/jensen
@@ -149,17 +122,8 @@
 	name = "head of security's jumpsuit"
 	icon_state = "jensen"
 	item_state = "jensen"
-	_color = "jensen"
-	siemens_coefficient = 0.6
-	flags = FPRINT | TABLEPASS | ONESIZEFITSALL
-
-/obj/item/clothing/suit/armor/hos/jensen
-	name = "armored trenchcoat"
-	desc = "A trenchcoat augmented with a special alloy for some protection and style."
-	icon_state = "jensencoat"
-	item_state = "jensencoat"
-	flags_inv = 0
-	siemens_coefficient = 0.6
+	item_color = "jensen"
+	flags_size = ONESIZEFITSALL
 
 //Paradise Station
 
@@ -182,3 +146,46 @@
 	name = "officer's blue jacket"
 	icon_state = "officerbluejacket"
 	item_state = "officerbluejacket"
+
+//TG Station
+
+/obj/item/clothing/under/rank/security/formal
+	name = "security suit"
+	desc = "A formal security suit for officers complete with nanotrasen belt buckle."
+	icon_state = "security_formal"
+	item_state = "gy_suit"
+	item_color = "security_formal"
+
+/obj/item/clothing/under/rank/warden/formal
+	name = "warden's suit"
+	desc = "A formal security suit for the warden with blue desginations and '/Warden/' stiched into the shoulders."
+	icon_state = "warden_formal"
+	item_state = "gy_suit"
+	item_color = "warden_formal"
+
+/obj/item/clothing/under/rank/head_of_security/formal
+	name = "head of security's suit"
+	desc = "A security suit decorated for those few with the dedication to achieve the position of Head of Security."
+	icon_state = "hos_formal"
+	item_state = "gy_suit"
+	item_color = "hos_formal"
+
+
+//Brig Physician
+/obj/item/clothing/under/rank/security/brigphys
+	desc = "Jumpsuit for Brig Physician it has both medical and security protection."
+	name = "brig physician's jumpsuit"
+	icon_state = "brig_phys"
+	item_state = "brig_phys"
+	item_color = "brig_phys"
+	permeability_coefficient = 0.50
+	armor = list(melee = 10, bullet = 0, laser = 0, energy = 0, bomb = 0, bio = 10, rad = 0)
+	flags_size = ONESIZEFITSALL
+
+//Pod Pilot
+/obj/item/clothing/under/rank/security/pod_pilot
+	desc = "Suit for your regular pod pilot."
+	name = "pod pilot's jumpsuit"
+	icon_state = "pod_pilot"
+	item_state = "pod_pilot"
+	item_color = "pod_pilot"
